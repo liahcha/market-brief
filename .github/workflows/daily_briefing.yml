@@ -1,0 +1,28 @@
+name: Daily Market Briefing Automation
+
+on:
+  schedule:
+    - cron: '30 22 * * 1-5'   # 화~토 오전 7:30 KST (미국 장 마감 직후)
+  workflow_dispatch:          # 수동 실행 버튼 활성화
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run Daily Briefing Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/generate_briefing.py
