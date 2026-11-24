@@ -15,10 +15,12 @@ supabase = create_client(
 )
 gemini = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
+
 class NewsItem(BaseModel):
     title: str
     source: str
     url: str
+
 
 class AISummary(BaseModel):
     headline: str
@@ -26,27 +28,32 @@ class AISummary(BaseModel):
     sector_flow: str
     curated_links: list[NewsItem]
 
+
 class KeyMover(BaseModel):
     ticker: str
     name: str
     change_pct: float
     reason: str
 
+
 class WatchlistComment(BaseModel):
     ticker: str
     name: str
     comment: str
+
 
 class CalendarEvent(BaseModel):
     date: str
     title: str
     importance: str
 
+
 class BriefingAIOutput(BaseModel):
     ai_summary: AISummary
     key_movers: list[KeyMover]
     watchlist_comments: list[WatchlistComment]
     calendar_events: list[CalendarEvent]
+
 
 def fetch_macro_data():
     tickers = {
@@ -68,6 +75,7 @@ def fetch_macro_data():
             })
     return results
 
+
 def fetch_watchlist_snapshot():
     res = supabase.table("watchlist").select("*").eq("is_active", True).order("display_order").execute()
     items = []
@@ -79,6 +87,7 @@ def fetch_watchlist_snapshot():
             change_pct = round(((close - prev) / prev) * 100, 2)
         items.append({"ticker": row["yf_ticker"], "name": row["name"], "change_pct": change_pct})
     return items
+
 
 def main():
     macro_data = fetch_macro_data()
@@ -92,7 +101,8 @@ def main():
     - 관심종목 현황: {watchlist_snap}
     - 요구사항: 핵심 3줄 요약, 섹터 강세/약세 흐름, 주요 특징주 5~8개, 관심종목별 한 줄 코멘트, 이번 주 주요 경제·실적 일정을 간결하게 정리할 것.
     """
-   response = gemini.models.generate_content(
+
+    response = gemini.models.generate_content(
         model="gemini-4-neon",
         contents=prompt,
         config=types.GenerateContentConfig(
@@ -101,7 +111,6 @@ def main():
             thinking_config=types.ThinkingConfig(thinking_level="medium"),
         ),
     )
-
     ai_data = BriefingAIOutput.model_validate_json(response.text).model_dump()
 
     payload = {
@@ -116,6 +125,7 @@ def main():
 
     supabase.table("daily_briefings").upsert(payload).execute()
     print(f"[{TODAY_STR}] 데일리 브리핑 DB 적재 완료")
+
 
 if __name__ == "__main__":
     main()
