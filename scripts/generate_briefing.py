@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime, timezone, timedelta
 import yfinance as yf
 from pydantic import BaseModel
@@ -14,6 +15,13 @@ supabase = create_client(
     os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 )
 gemini = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+# 503 과부하 시 순서대로 자동 전환할 모델 목록
+CANDIDATE_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
+]
 
 
 class NewsItem(BaseModel):
@@ -89,6 +97,31 @@ def fetch_watchlist_snapshot():
     return items
 
 
+def generate_briefing_with_fallback(prompt: str) -> dict:
+    last_error = None
+    for model_name in CANDIDATE_MODELS:
+        for attempt in range(1, 3):
+            try:
+                print(f"[AI 호출] 모델: {model_name} (시도 {attempt}/2)")
+                response = gemini.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=BriefingAIOutput,
+                    ),
+                )
+                print(f"[AI 성공] 사용된 모델: {model_name}")
+                return BriefingAIOutput.model_validate_json(response.text).model_dump()
+            except Exception as e:
+                last_error = e
+                print(f"[AI 재시도 대기] {model_name} 시도 {attempt} 실패: {e}")
+                if attempt < 2:
+                    time.sleep(15)
+        print(f"[모델 전환] {model_name} 혼잡으로 다음 모델로 전환합니다.")
+    raise RuntimeError(f"모든 후보 모델 호출 실패: {last_error}")
+
+
 def main():
     macro_data = fetch_macro_data()
     watchlist_snap = fetch_watchlist_snapshot()
@@ -102,16 +135,7 @@ def main():
     - 요구사항: 핵심 3줄 요약, 섹터 강세/약세 흐름, 주요 특징주 5~8개, 관심종목별 한 줄 코멘트, 이번 주 주요 경제·실적 일정을 간결하게 정리할 것.
     """
 
-    response = gemini.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=BriefingAIOutput,
-            thinking_config=types.ThinkingConfig(thinking_level="medium"),
-        ),
-    )
-    ai_data = BriefingAIOutput.model_validate_json(response.text).model_dump()
+    ai_data = generate_briefing_with_fallback(prompt)
 
     payload = {
         "briefing_date": TODAY_STR,
