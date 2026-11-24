@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-market-color="kr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Brief — 데일리 시장 브리핑</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- 상단 글로벌 네비게이션 바 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="mobile-menu-btn" class="icon-btn mobile-only" aria-label="아카이브 열기" title="아카이브 목록">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <a href="./index.html" class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-title">Market Brief</span>
+      </a>
+      <nav class="nav-tabs" aria-label="메인 페이지 전환">
+        <button class="nav-tab active" data-page="briefing">시장 브리핑</button>
+        <button class="nav-tab" data-page="portfolio">내 포트폴리오 <span class="tab-pill">2단계</span></button>
+      </nav>
+    </div>
+
+    <div class="topbar-right">
+      <span id="db-status-badge" class="status-badge loading">연결 중...</span>
+      <span id="current-date-pill" class="date-pill">-</span>
+      <button id="color-scheme-btn" class="chip-btn" title="등락 색상 기준 전환 (한국식: 상승 빨강 / 미국식: 상승 초록)">
+        KR 색상
+      </button>
+      <button id="theme-toggle-btn" class="icon-btn" aria-label="테마 전환" title="다크/라이트 모드 전환">
+        <span id="theme-icon">🌙</span>
+      </button>
+      <button id="refresh-btn" class="icon-btn" aria-label="새로고침" title="데이터 새로고침">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+          <polyline points="21 3 21 9 15 9"></polyline>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 모바일 사이드바 백드롭 -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <!-- 메인 레이아웃 (좌측 아카이브 + 우측 대시보드) -->
+  <div class="app-shell">
+    <aside id="archive-sidebar" class="sidebar" aria-label="일자별 브리핑 아카이브">
+      <div class="sidebar-header">
+        <h2>브리핑 아카이브</h2>
+        <span id="archive-count" class="muted-count">0건</span>
+      </div>
+      <div class="sidebar-search">
+        <input type="text" id="archive-search-input" placeholder="날짜 검색 (예: 2026-11)" autocomplete="off" />
+      </div>
+      <div id="archive-tree" class="archive-tree">
+        <div class="empty-inline">목록을 불러오는 중...</div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-note">
+          화~토 오전 07:30 KST 자동 갱신<br />
+          미장 당일 마감 · 국장 전일 마감
+        </div>
+      </div>
+    </aside>
+
+    <!-- 우측 메인 영역 -->
+    <main class="main-content">
+      <!-- 상태 안내 배너 (샘플 모드 / 오류 시 노출) -->
+      <div id="notice-banner" class="notice-banner hidden">
+        <div class="notice-text" id="notice-text"></div>
+        <button id="notice-action-btn" class="notice-btn hidden">샘플 전환</button>
+      </div>
+
+      <!-- 페이지 A: 시장 브리핑 (6대 공개 섹션) -->
+      <div id="page-briefing" class="page-view">
+        <!-- 상단 브리핑 메타 헤더 -->
+        <div class="briefing-hero">
+          <div>
+            <div class="hero-kicker">DAILY MARKET BRIEFING</div>
+            <h1 id="hero-headline" class="hero-headline">시장 브리핑을 불러오는 중입니다...</h1>
+          </div>
+          <div class="hero-meta">
+            <span id="hero-date-label">기준일: -</span>
+          </div>
+        </div>
+
+        <!-- 1. 매크로 & 지수 요약 -->
+        <section class="section-card" id="sec-macro">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">1. 매크로 &amp; 주요 지수</h2>
+              <p class="section-sub">글로벌 핵심 지수 · 환율 · 금리 · 원자재 마감 스냅샷</p>
+            </div>
+          </div>
+          <div id="macro-grid" class="macro-grid"></div>
+        </section>
+
+        <!-- 2. S&P 500 시장 히트맵 -->
+        <section class="section-card" id="sec-heatmap">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">2. S&amp;P 500 시장 히트맵</h2>
+              <p class="section-sub">섹터별 시가총액 비중 및 실시간 등락률 (TradingView 연동)</p>
+            </div>
+            <a href="https://finviz.com/map.ashx" target="_blank" rel="noopener noreferrer" class="outline-link-btn">
+              Finviz 원본 보기 ↗
+            </a>
+          </div>
+          <div id="heatmap-widget-container" class="widget-box heatmap-box"></div>
+        </section>
+
+        <!-- 3. AI 시황 핵심 요약 -->
+        <section class="section-card" id="sec-summary">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">3. AI 시황 핵심 요약</h2>
+              <p class="section-sub">오늘의 시장 핵심 동인 · 섹터 흐름 · 주요 큐레이션</p>
+            </div>
+          </div>
+          <div class="summary-layout">
+            <div class="summary-main">
+              <h3 class="sub-label">오늘의 3줄 요약</h3>
+              <ol id="summary-bullets" class="summary-bullets"></ol>
+
+              <h3 class="sub-label" style="margin-top: 20px;">섹터별 강세 / 약세 흐름</h3>
+              <div id="sector-flow-box" class="sector-flow-box">-</div>
+            </div>
+            <div class="summary-links-col">
+              <h3 class="sub-label">주요 뉴스 &amp; 리포트 링크</h3>
+              <div id="curated-links-list" class="curated-links"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. 주요 특징주 -->
+        <section class="section-card" id="sec-movers">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">4. 주요 특징주 (Key Movers)</h2>
+              <p class="section-sub">당일 시장 상승·하락 주도주 및 핵심 등락 사유</p>
+            </div>
+            <div class="filter-group" id="movers-filter">
+              <button class="filter-btn active" data-filter="all">전체</button>
+              <button class="filter-btn" data-filter="up">상승</button>
+              <button class="filter-btn" data-filter="down">하락</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 110px;">티커</th>
+                  <th style="width: 160px;">종목명</th>
+                  <th style="width: 110px; text-align: right;">등락률</th>
+                  <th>AI 한 줄 등락 사유</th>
+                </tr>
+              </thead>
+              <tbody id="movers-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 5. 관심종목 실시간 추이 -->
+        <section class="section-card" id="sec-watchlist">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">5. 관심종목 실시간 추이</h2>
+              <p class="section-sub">Supabase watchlist 테이블 연동 · 종목 클릭 시 실시간 차트 전환</p>
+            </div>
+          </div>
+          <div id="watchlist-tabs" class="watchlist-tabs"></div>
+          <div id="watchlist-chart-container" class="widget-box chart-box"></div>
+          <div id="selected-watchlist-comment" class="watchlist-highlight"></div>
+          <div id="watchlist-comments-grid" class="watchlist-comments-grid"></div>
+        </section>
+
+        <!-- 6. 주요 경제·실적 일정 -->
+        <section class="section-card" id="sec-calendar">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">6. 주요 경제 · 실적 일정</h2>
+              <p class="section-sub">당일 및 금주 핵심 거시지표 발표 · 주요 기업 실적 일정</p>
+            </div>
+          </div>
+          <div id="calendar-list" class="calendar-list"></div>
+        </section>
+      </div>
+
+      <!-- 페이지 B: 내 포트폴리오 (2단계 예정 플레이스홀더) -->
+      <div id="page-portfolio" class="page-view hidden">
+        <section class="section-card portfolio-placeholder">
+          <div class="placeholder-badge">2단계 개발 예정 (Zero-Exposure 비공개 영역)</div>
+          <h2>심플 포트폴리오</h2>
+          <p>
+            개인 자산 정보는 깃허브 저장소에 단 한 줄도 노출되지 않도록 분리 설계되어 있습니다.<br />
+            2단계에서 비공개 구글 시트(Google Sheets)의 <strong>종목 · 주식수 · 매입단가</strong> 3가지 열만 연동하여<br />
+            총 평가손익, 종목별 비중 차트, 수익률 테이블을 렌더링할 예정입니다.
+          </p>
+          <button id="back-to-briefing-btn" class="primary-btn">시장 브리핑으로 돌아가기</button>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="./js/config.js"></script>
+  <script src="./js/briefing.js"></script>
+</body>
+</html>
