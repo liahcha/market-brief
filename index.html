@@ -4,377 +4,1659 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Market Brief — 글로벌 데일리 시장 브리핑</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <link rel="stylesheet" href="./style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-page: #0b0f19;
+      --bg-sidebar: rgba(2, 6, 23, 0.94);
+      --bg-surface: rgba(15, 23, 42, 0.78);
+      --bg-surface-solid: #0f172a;
+      --bg-subtle: rgba(30, 41, 59, 0.58);
+      --bg-hover: rgba(30, 41, 59, 0.92);
+      --border-color: rgba(51, 65, 85, 0.65);
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.16);
+      --up-color: #34d399;
+      --down-color: #fb7185;
+      --flat-color: #94a3b8;
+    }
+
+    [data-market-color="kr"] {
+      --up-color: #fb7185;
+      --down-color: #60a5fa;
+    }
+
+    [data-theme="light"] {
+      --bg-page: #f3f6fb;
+      --bg-sidebar: #ffffff;
+      --bg-surface: #ffffff;
+      --bg-surface-solid: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --bg-hover: #e2e8f0;
+      --border-color: #dbe3ee;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.1);
+      --up-color: #059669;
+      --down-color: #e11d48;
+    }
+
+    [data-theme="light"][data-market-color="kr"] {
+      --up-color: #e11d48;
+      --down-color: #2563eb;
+    }
+
+    body {
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .font-mono-num {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .glass-card {
+      background: var(--bg-surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 0.875rem;
+    }
+
+    .subtle-box {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+    }
+
+    .text-up { color: var(--up-color); }
+    .text-down { color: var(--down-color); }
+    .text-flat { color: var(--flat-color); }
+    .text-main { color: var(--text-primary); }
+    .text-sub { color: var(--text-secondary); }
+    .text-dim { color: var(--text-muted); }
+
+    /* Finviz Tilemap exact styles (matching original Investment Briefing) */
+    .finviz-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.55rem 0.35rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+    .finviz-tile:hover { transform: translateY(-2px); filter: brightness(1.12); }
+    .finviz-loss-deep { background: #dc2626; border: 1px solid #ef4444; color: #fff; }
+    .finviz-loss { background: #991b1b; border: 1px solid #b91c1c; color: #fff; }
+    .finviz-loss-light { background: #7f1d1d; border: 1px solid #991b1b; color: #fff; }
+    .finviz-gain-deep { background: #16a34a; border: 1px solid #22c55e; color: #fff; }
+    .finviz-gain { background: #15803d; border: 1px solid #16a34a; color: #fff; }
+    .finviz-gain-light { background: #14532d; border: 1px solid #15803d; color: #fff; }
+
+    /* Light-mode adjustment for Finviz snapshot containers */
+    [data-theme="light"] #finvizSnapshotContainer .bg-slate-900\/90 {
+      background-color: #f8fafc !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+    [data-theme="light"] #finvizSnapshotContainer .text-slate-300 {
+      color: #334155 !important;
+    }
+    [data-theme="light"] #finvizSnapshotContainer .border-slate-800 {
+      border-color: #e2e8f0 !important;
+    }
+
+    /* Sidebar & Drawer */
+    .sidebar-panel {
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+    }
+
+    .month-box {
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      background: var(--bg-subtle);
+      padding: 0.5rem;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .month-box.active-month {
+      border-color: rgba(59, 130, 246, 0.7);
+      background: var(--accent-soft);
+    }
+    .month-box.collapsed .month-dates { display: none; }
+    .month-box.collapsed .month-chevron { transform: rotate(-90deg); }
+
+    .date-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.6rem;
+      border-radius: 0.5rem;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      text-align: left;
+      cursor: pointer;
+    }
+    .date-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .date-btn.active {
+      background: rgba(37, 99, 235, 0.22);
+      color: #60a5fa;
+      border-color: rgba(59, 130, 246, 0.45);
+      font-weight: 700;
+    }
+
+    .wl-chip {
+      border: 1px solid var(--border-color);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      padding: 0.42rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.38rem;
+      transition: all 0.15s ease;
+    }
+    .wl-chip:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .wl-chip.active { background: #2563eb; border-color: #2563eb; color: #ffffff; }
+
+    .filter-pill {
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0.28rem 0.65rem;
+      border-radius: 0.45rem;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .filter-pill:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .filter-pill.active-type { background: #2563eb; border-color: #2563eb; color: #ffffff; }
+    .filter-pill.active-sector { background: #7c3aed; border-color: #7c3aed; color: #ffffff; }
+
+    .seg-btn {
+      padding: 0.3rem 0.7rem;
+      border-radius: 0.45rem;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .seg-btn.active { background: #2563eb; color: #ffffff; }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.35); border-radius: 9999px; }
+  </style>
 </head>
-<body>
-  <!-- 상단 글로벌 네비게이션 바 -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button id="mobile-menu-btn" class="icon-btn mobile-only" aria-label="아카이브 열기" title="아카이브 목록">
-        <i class="fa-solid fa-bars"></i>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- TOP GLOBAL NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 h-14 px-4 flex items-center justify-between gap-3 sidebar-panel border-b border-slate-800/70">
+    <div class="flex items-center gap-3 min-w-0">
+      <button id="mobile-menu-btn" type="button" class="md:hidden w-8 h-8 rounded-lg subtle-box flex items-center justify-center text-main" aria-label="아카이브 메뉴">
+        <i class="fa-solid fa-bars text-sm"></i>
       </button>
-      <a href="./index.html" class="brand">
-        <span class="brand-icon"><i class="fa-solid fa-chart-line"></i></span>
-        <span class="brand-text">
-          <span class="brand-title">Market Brief</span>
-          <span class="brand-sub">Global Market Intelligence</span>
-        </span>
+
+      <a href="./index.html" class="flex items-center gap-2.5 shrink-0">
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <i class="fa-solid fa-chart-line text-sm"></i>
+        </div>
+        <div class="hidden sm:block leading-tight">
+          <div class="font-extrabold text-sm text-main tracking-tight">Market Brief</div>
+          <div class="text-[10.5px] text-dim font-mono-num">Global Market Intelligence</div>
+        </div>
       </a>
-      <nav class="nav-tabs" aria-label="메인 페이지 전환">
-        <button class="nav-tab active" data-page="briefing">
-          <i class="fa-solid fa-earth-americas"></i> 시장 브리핑
+
+      <nav class="flex items-center gap-1 p-1 rounded-lg subtle-box ml-1" aria-label="메인 탭">
+        <button type="button" class="nav-tab px-3 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white flex items-center gap-1.5" data-page="briefing">
+          <i class="fa-solid fa-earth-americas"></i>
+          <span>시장 브리핑</span>
         </button>
-        <button class="nav-tab" data-page="portfolio">
-          <i class="fa-solid fa-lock"></i> 내 포트폴리오 <span class="tab-pill">2단계</span>
+        <button type="button" class="nav-tab px-3 py-1 rounded-md text-xs font-semibold text-dim hover:text-main flex items-center gap-1.5" data-page="portfolio">
+          <i class="fa-solid fa-lock"></i>
+          <span>내 포트폴리오</span>
+          <span class="hidden sm:inline text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400">2단계</span>
         </button>
       </nav>
     </div>
 
-    <div class="topbar-right">
-      <span id="db-status-badge" class="status-badge loading">연결 중...</span>
-      <button id="color-scheme-btn" class="chip-btn" title="등락 색상 전환 (미국식: 상승 초록 / 한국식: 상승 빨강)">
+    <div class="flex items-center gap-2 shrink-0">
+      <span id="db-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">연결 중...</span>
+      <button id="color-scheme-btn" type="button" class="h-8 px-2.5 rounded-lg subtle-box text-xs font-semibold text-main hover:opacity-90" title="등락 색상 전환 (US: 상승 초록 / KR: 상승 빨강)">
         US 색상
       </button>
-      <button id="theme-toggle-btn" class="icon-btn" aria-label="테마 전환" title="다크/라이트 모드 전환">
-        <i id="theme-icon" class="fa-solid fa-sun"></i>
+      <button id="theme-toggle-btn" type="button" class="w-8 h-8 rounded-lg subtle-box flex items-center justify-center text-main hover:opacity-90" title="다크/라이트 모드 전환">
+        <i id="theme-icon" class="fa-solid fa-sun text-xs"></i>
       </button>
-      <button id="refresh-btn" class="icon-btn" aria-label="새로고침" title="데이터 새로고침">
-        <i class="fa-solid fa-rotate-right"></i>
+      <button id="refresh-btn" type="button" class="w-8 h-8 rounded-lg subtle-box flex items-center justify-center text-main hover:opacity-90" title="DB 새로고침">
+        <i class="fa-solid fa-rotate-right text-xs"></i>
       </button>
     </div>
   </header>
 
-  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+  <!-- Mobile Sidebar Backdrop -->
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 top-14 bg-slate-950/70 z-40 md:hidden"></div>
 
-  <!-- 메인 앱 쉘 (좌측 아카이브 + 우측 대시보드) -->
-  <div class="app-shell">
-    <!-- 좌측 아카이브 사이드바 -->
-    <aside id="archive-sidebar" class="sidebar" aria-label="일자별 및 월별 브리핑 아카이브">
-      <div class="sidebar-top">
-        <div class="sidebar-header">
-          <span>BRIEFING ARCHIVES</span>
-          <span id="archive-count" class="archive-days-badge">0 Days</span>
+  <!-- MAIN SHELL -->
+  <div class="flex flex-1 min-h-0">
+    <!-- LEFT SIDEBAR: Briefing Archives -->
+    <aside id="archive-sidebar" class="sidebar-panel w-72 shrink-0 p-3.5 flex flex-col justify-between fixed md:sticky top-14 left-0 h-[calc(100vh-3.5rem)] z-50 -translate-x-full md:translate-x-0 transition-transform duration-200">
+      <div class="flex flex-col min-h-0 flex-1">
+        <div class="flex items-center justify-between px-1 mb-2">
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-dim">Briefing Archives</span>
+          <span id="archive-count" class="text-[11px] font-mono-num text-blue-400 font-bold">0 Days</span>
         </div>
-        <div class="sidebar-hint">
-          <i class="fa-solid fa-circle-info"></i>
-          <span><b>월(Month)</b> 헤더 클릭 시 <b>직전월 vs 해당월</b> 매크로 트렌드 비교 리포트가 열립니다.</span>
+
+        <div class="text-[11px] text-dim px-1 mb-2.5 leading-snug">
+          <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+          <b>월(Month)</b> 헤더 클릭 시 <b>직전월 vs 해당월</b> 매크로 트렌드 비교 리포트가 열립니다.
         </div>
-        <div class="sidebar-search">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="archive-search-input" placeholder="날짜 검색 (예: 2026-11)" autocomplete="off" />
+
+        <div class="relative mb-2.5">
+          <i class="fa-solid fa-magnifying-glass text-dim text-xs absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="archive-search-input" type="text" placeholder="날짜 검색 (예: 2026-11)" autocomplete="off"
+                 class="w-full pl-8 pr-3 py-1.5 rounded-lg subtle-box text-xs text-main placeholder:text-dim focus:outline-none focus:border-blue-500" />
+        </div>
+
+        <div id="archive-tree" class="flex-1 overflow-y-auto space-y-2 pr-1">
+          <div class="text-center text-xs text-dim py-6">아카이브를 불러오는 중...</div>
         </div>
       </div>
 
-      <div id="archive-tree" class="archive-tree">
-        <div class="empty-inline">아카이브를 불러오는 중...</div>
-      </div>
-
-      <div class="sidebar-footer">
-        <div class="storage-card">
-          <div class="storage-title">
-            <i class="fa-solid fa-database"></i>
+      <div class="pt-3 mt-3 border-t border-slate-800/70">
+        <div class="subtle-box rounded-lg p-2.5 text-[11px] space-y-0.5">
+          <div class="font-bold text-main flex items-center gap-1.5">
+            <i class="fa-solid fa-database text-emerald-400"></i>
             <span>Supabase Live DB</span>
           </div>
-          <div class="storage-meta">화~토 07:30 KST 자동 업데이트</div>
-          <div class="storage-meta ok">공개 시장 데이터 전용 (개인자산 분리)</div>
+          <div class="text-dim text-[10.5px]">화~토 07:30 KST 자동 업데이트</div>
+          <div class="text-emerald-400 text-[10.5px] font-semibold">공개 시장 전용 (개인자산 분리)</div>
         </div>
       </div>
     </aside>
 
-    <!-- 우측 메인 컨텐츠 -->
-    <main class="main-content">
-      <!-- 안내 배너 -->
-      <div id="notice-banner" class="notice-banner hidden">
-        <div id="notice-text" class="notice-text"></div>
+    <!-- RIGHT MAIN CONTENT -->
+    <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-7 max-w-7xl mx-auto w-full space-y-6">
+
+      <!-- Diagnostic Notice Banner -->
+      <div id="notice-banner" class="hidden rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-main leading-relaxed">
+        <div id="notice-text"></div>
       </div>
 
       <!-- =======================================================
-           페이지 A: 일간 시장 브리핑 뷰
+           PAGE A: MARKET BRIEFING
            ======================================================= -->
-      <div id="page-briefing" class="page-view">
-        <div id="dailyBriefingView">
-          <!-- 상단 일자 & 기준환율 카드 (투자 브리핑 스타일) -->
-          <header class="glass-card hero-card">
-            <div class="hero-left">
-              <div class="hero-title-row">
-                <h1 id="displayHeaderDate" class="hero-date">-</h1>
-                <span id="displayBadge" class="hero-badge today">Today</span>
+      <div id="page-briefing" class="space-y-6">
+
+        <!-- A-1: DAILY BRIEFING VIEW -->
+        <div id="dailyBriefingView" class="space-y-6">
+          <!-- Hero Date & Exchange Rate Card -->
+          <header class="glass-card p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="space-y-2 min-w-0">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 id="displayHeaderDate" class="text-2xl sm:text-3xl font-extrabold text-main tracking-tight">-</h1>
+                <span id="displayBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/35">Today</span>
               </div>
-              <div id="displayTimezoneTags" class="tag-row">
-                <span class="pill blue">미국 전일 마감 종가 기준</span>
-                <span class="pill slate">한국 전일 마감 종가 기준</span>
-                <span class="pill emerald">Supabase DB 연동</span>
-              </div>
-              <p id="heroHeadlineText" class="hero-headline-sub"></p>
+              <div id="displayTimezoneTags" class="flex flex-wrap items-center gap-2 text-xs"></div>
+              <p id="heroHeadlineText" class="text-sm text-sub font-medium pt-0.5"></p>
             </div>
 
-            <div class="fx-box">
-              <div class="fx-label">당일 기준환율 (USD/KRW)</div>
-              <div id="displayFxVal" class="fx-val mono">-</div>
-              <div id="displayFxDelta" class="fx-delta mono">-</div>
+            <div class="shrink-0 subtle-box rounded-xl px-4 py-3 lg:text-right min-w-[230px]">
+              <div class="text-xs text-dim">당일 기준환율 (USD/KRW)</div>
+              <div id="displayFxVal" class="text-xl sm:text-2xl font-extrabold font-mono-num text-up mt-0.5">-</div>
+              <div id="displayFxDelta" class="text-[11px] text-dim font-mono-num mt-0.5">-</div>
             </div>
           </header>
 
-          <!-- SECTION 1: Finviz S&P 500 Map (실시간 히트맵 + 섹터 타일맵 스냅샷 전환) -->
-          <section class="section-block" id="sec-heatmap">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">1</span>
-                <h2>Finviz S&amp;P 500 Map</h2>
+          <!-- SECTION 1: Finviz S&P 500 Map -->
+          <section class="space-y-3" id="sec-heatmap">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">1</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">Finviz S&amp;P 500 Map</h2>
               </div>
-              <div class="section-head-right">
-                <div class="segmented" id="heatmap-mode-tabs">
-                  <button class="seg-btn active" data-mode="live">실시간 히트맵</button>
-                  <button class="seg-btn" data-mode="snapshot">당일 섹터 타일맵</button>
+              <div class="flex items-center gap-3 flex-wrap">
+                <div id="heatmap-mode-tabs" class="inline-flex p-1 rounded-lg subtle-box gap-1">
+                  <button type="button" class="seg-btn active" data-mode="snapshot">당일 섹터 타일맵</button>
+                  <button type="button" class="seg-btn" data-mode="live">실시간 S&amp;P 500 히트맵</button>
                 </div>
-                <a href="https://finviz.com/map.ashx" target="_blank" rel="noopener noreferrer" class="ext-link">
-                  finviz.com/map 원본 보기 <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <a href="https://finviz.com/map.ashx" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                  <span>finviz.com/map 원본</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                 </a>
               </div>
             </div>
 
-            <div class="glass-card p-16">
-              <div id="heatmap-live-panel" class="widget-box heatmap-box"></div>
-              <div id="heatmap-snapshot-panel" class="hidden">
-                <div id="finvizSnapshotContainer" class="finviz-grid"></div>
+            <div class="glass-card p-4">
+              <div id="heatmap-snapshot-panel">
+                <div id="finvizSnapshotContainer" class="grid grid-cols-1 md:grid-cols-12 gap-3"></div>
               </div>
+              <div id="heatmap-live-panel" class="hidden w-full h-[460px] rounded-xl overflow-hidden border border-slate-700/60"></div>
             </div>
           </section>
 
-          <!-- SECTION 2: 글로벌 주요 증시 및 매크로 지표 -->
-          <section class="section-block" id="sec-macro">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">2</span>
-                <h2>글로벌 주요 증시 및 매크로 지표</h2>
+          <!-- SECTION 2: Global Macro Indicators -->
+          <section class="space-y-3" id="sec-macro">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">2</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">글로벌 주요 증시 및 매크로 지표</h2>
               </div>
-              <span class="section-hint mono">미 3대 · 한 2대 · 환율 · DXY · 유가 · VIX · 금리</span>
+              <span class="text-xs text-dim font-mono-num">미 3대 · 한 2대 · 환율 · DXY · 유가 · VIX</span>
             </div>
-            <div id="macro-grid" class="macro-grid"></div>
+            <div id="macro-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div>
           </section>
 
-          <!-- SECTION 3: 시장 주요 특징 및 3대 핵심 시사점 & 미디어 링크 -->
-          <section class="section-block" id="sec-summary">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">3</span>
-                <h2>시장 주요 특징 및 섹터 동향 (3대 핵심 시사점)</h2>
-              </div>
+          <!-- SECTION 3: Market Key Takeaways & Media Links -->
+          <section class="space-y-4" id="sec-summary">
+            <div class="flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">3</span>
+              <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">시장 주요 특징 및 섹터 동향 (3대 핵심 시사점)</h2>
             </div>
 
-            <!-- 3 Key Takeaways Cards -->
-            <div id="takeawaysContainer" class="takeaways-grid"></div>
+            <div id="takeawaysContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
 
-            <!-- 섹터 흐름 요약 (있을 경우 노출) -->
-            <div id="sectorFlowWrapper" class="glass-card sector-flow-card hidden">
-              <div class="media-head">
-                <i class="fa-solid fa-compass text-blue"></i>
+            <div id="sectorFlowWrapper" class="hidden glass-card p-4">
+              <div class="flex items-center gap-2 text-xs font-bold text-main pb-2 border-b border-slate-700/60 mb-2">
+                <i class="fa-solid fa-compass text-blue-400"></i>
                 <span>섹터별 강세 / 약세 흐름</span>
               </div>
-              <p id="sectorFlowText" class="sector-flow-text"></p>
+              <p id="sectorFlowText" class="text-xs sm:text-sm text-sub leading-relaxed"></p>
             </div>
 
-            <!-- 언론 보도 + 한경 글로벌마켓 유튜브 2열 카드 -->
-            <div class="media-grid">
-              <div class="glass-card media-card">
-                <div class="media-head">
-                  <i class="fa-solid fa-link text-blue"></i>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div class="glass-card p-4 space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-main border-b border-slate-700/60 pb-2">
+                  <i class="fa-solid fa-link text-blue-400"></i>
                   <span>최신 팩트 언론 보도 (기사 단위)</span>
                 </div>
-                <div id="newsLinksContainer" class="media-list"></div>
+                <div id="newsLinksContainer" class="space-y-1.5"></div>
               </div>
 
-              <div class="glass-card media-card">
-                <div class="media-head">
-                  <i class="fa-brands fa-youtube text-red"></i>
+              <div class="glass-card p-4 space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-main border-b border-slate-700/60 pb-2">
+                  <i class="fa-brands fa-youtube text-red-500"></i>
                   <span>글로벌 시황 유튜브 (동영상 단위 · 한경 글로벌마켓)</span>
                 </div>
-                <div id="youtubeLinksContainer" class="media-list"></div>
+                <div id="youtubeLinksContainer" class="space-y-1.5"></div>
               </div>
             </div>
           </section>
 
-          <!-- SECTION 4: 핵심 특징주 움직임 (상승/하락 2열 + 사유 한줄 요약) -->
-          <section class="section-block" id="sec-movers">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">4</span>
-                <h2>핵심 특징주 움직임 (사유 한줄 요약)</h2>
+          <!-- SECTION 4: Key Movers (Gainers / Losers) -->
+          <section class="space-y-3" id="sec-movers">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">4</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">핵심 특징주 움직임 (사유 한줄 요약)</h2>
               </div>
-              <span class="section-hint">당일 시장 주도 상승·하락 종목</span>
+              <span class="text-xs text-dim">개인 보유수량·손익 비노출 · 순수 시장 기준</span>
             </div>
 
-            <div class="movers-grid">
-              <div class="glass-card movers-col">
-                <div class="movers-col-head up">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="glass-card p-4 space-y-2.5">
+                <div class="flex items-center gap-2 text-xs font-bold text-up uppercase tracking-wide">
                   <i class="fa-solid fa-arrow-trend-up"></i>
                   <span>상승 상위 특징주</span>
                 </div>
-                <div id="gainersContainer" class="movers-list"></div>
+                <div id="gainersContainer" class="space-y-2"></div>
               </div>
 
-              <div class="glass-card movers-col">
-                <div class="movers-col-head down">
+              <div class="glass-card p-4 space-y-2.5">
+                <div class="flex items-center gap-2 text-xs font-bold text-down uppercase tracking-wide">
                   <i class="fa-solid fa-arrow-trend-down"></i>
                   <span>하락 상위 특징주</span>
                 </div>
-                <div id="losersContainer" class="movers-list"></div>
+                <div id="losersContainer" class="space-y-2"></div>
               </div>
             </div>
           </section>
 
-          <!-- SECTION 5: 관심종목 실시간 추이 (기존 5번 섹션 종목 기반 · 개인자산 비노출) -->
-          <section class="section-block" id="sec-watchlist">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">5</span>
-                <h2>관심종목 실시간 추이</h2>
+          <!-- SECTION 5: Watchlist Realtime Tracker -->
+          <section class="space-y-3" id="sec-watchlist">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">5</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">관심종목 실시간 추이</h2>
               </div>
-              <span id="watchlistCountLabel" class="section-hint mono">Supabase watchlist 연동</span>
+              <span id="watchlistCountLabel" class="text-xs text-dim font-mono-num">Supabase watchlist 연동</span>
             </div>
 
-            <div class="glass-card p-16">
-              <!-- 자산군 + 섹터 다중 필터 바 -->
-              <div class="filter-panel">
-                <div class="filter-row">
-                  <span class="filter-label"><i class="fa-solid fa-layer-group text-blue"></i> 자산군:</span>
-                  <div id="wl-type-filters" class="filter-chips"></div>
+            <div class="glass-card p-4 space-y-4">
+              <!-- Multi Filter Bar -->
+              <div class="subtle-box rounded-xl p-3 space-y-2 text-xs">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-bold text-dim min-w-[62px]"><i class="fa-solid fa-layer-group text-blue-400 mr-1"></i>자산군:</span>
+                  <div id="wl-type-filters" class="flex flex-wrap gap-1.5"></div>
                 </div>
-                <div class="filter-row border-top">
-                  <span class="filter-label"><i class="fa-solid fa-shapes text-purple"></i> 섹터:</span>
-                  <div id="wl-sector-filters" class="filter-chips"></div>
+                <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-700/50">
+                  <span class="font-bold text-dim min-w-[62px]"><i class="fa-solid fa-shapes text-purple-400 mr-1"></i>섹터:</span>
+                  <div id="wl-sector-filters" class="flex flex-wrap gap-1.5"></div>
                 </div>
               </div>
 
-              <!-- 종목 선택 칩 -->
-              <div id="watchlist-tabs" class="watchlist-tabs"></div>
+              <!-- Watchlist Chips -->
+              <div id="watchlist-tabs" class="flex flex-wrap gap-2"></div>
 
-              <!-- TradingView 실시간 차트 -->
-              <div id="watchlist-chart-container" class="widget-box chart-box"></div>
+              <!-- TradingView Realtime Chart -->
+              <div id="watchlist-chart-container" class="w-full h-[390px] rounded-xl overflow-hidden border border-slate-700/60"></div>
 
-              <!-- 선택 종목 AI 데일리 코멘트 -->
-              <div id="selected-watchlist-comment" class="watchlist-highlight"></div>
+              <!-- Selected Ticker Highlight -->
+              <div id="selected-watchlist-comment" class="rounded-xl p-3.5 bg-blue-500/10 border border-blue-500/30 text-xs sm:text-sm text-main leading-relaxed"></div>
 
-              <!-- 필터된 관심종목 카드 그리드 -->
-              <div id="watchlist-comments-grid" class="watchlist-comments-grid"></div>
+              <!-- Watchlist Cards Grid -->
+              <div id="watchlist-comments-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
             </div>
           </section>
 
-          <!-- SECTION 6: 주요 경제 · 실적 일정 -->
-          <section class="section-block" id="sec-calendar">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">6</span>
-                <h2>주요 경제 · 실적 일정</h2>
+          <!-- SECTION 6: Economic & Earnings Calendar -->
+          <section class="space-y-3" id="sec-calendar">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">6</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">주요 경제 · 실적 일정</h2>
               </div>
-              <span class="section-hint">당일 및 금주 핵심 이벤트</span>
+              <span class="text-xs text-dim">당일 및 금주 핵심 거시지표·실적</span>
             </div>
-            <div class="glass-card p-16">
-              <div id="calendar-list" class="calendar-list"></div>
+            <div class="glass-card p-4">
+              <div id="calendar-list" class="space-y-2"></div>
             </div>
           </section>
         </div>
 
-        <!-- =======================================================
-             월간 비교 뷰 (좌측 월 헤더 클릭 시 오픈 · DB 자동 집계)
-             ======================================================= -->
-        <div id="monthlyComparisonView" class="hidden">
-          <header class="glass-card monthly-hero">
-            <div class="hero-left">
-              <div class="tag-row" style="margin-top: 0; margin-bottom: 8px;">
-                <span class="pill solid-blue">MONTHLY MACRO TREND REPORT</span>
-                <span id="m_periodBadge" class="pill emerald">월간 자동 집계</span>
+        <!-- A-2: MONTHLY COMPARISON VIEW (Month Header Click) -->
+        <div id="monthlyComparisonView" class="hidden space-y-6">
+          <header class="glass-card p-5 border-blue-500/45 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-600 text-white">MONTHLY MACRO TREND REPORT</span>
+                <span id="m_periodBadge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">월간 비교</span>
               </div>
-              <h1 id="m_headerTitle" class="monthly-title">-</h1>
-              <p id="m_headerSubtitle" class="monthly-sub">-</p>
+              <h1 id="m_headerTitle" class="text-xl sm:text-2xl font-extrabold text-main tracking-tight">-</h1>
+              <p id="m_headerSubtitle" class="text-xs sm:text-sm text-sub">-</p>
             </div>
-            <button id="back-to-daily-btn" class="back-btn">
-              <i class="fa-solid fa-calendar-day"></i>
+            <button id="back-to-daily-btn" type="button" class="shrink-0 px-3.5 py-2 rounded-xl subtle-box hover:opacity-90 text-xs font-semibold text-main flex items-center gap-2 self-start lg:self-center">
+              <i class="fa-solid fa-calendar-day text-blue-400"></i>
               <span>일간 브리핑으로 돌아가기</span>
             </button>
           </header>
 
-          <!-- M1: 직전월 vs 해당월 주요 증시 및 매크로 트렌드 비교 -->
-          <section class="section-block">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">M1</span>
-                <h2>직전월 vs 해당월 주요 증시 및 매크로 트렌드 비교</h2>
+          <!-- M1: Month-over-Month Macro Comparison Table -->
+          <section class="space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 font-extrabold text-sm flex items-center justify-center">M1</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">직전월 vs 해당월 주요 증시 및 매크로 트렌드 비교</h2>
               </div>
-              <span class="section-hint mono">Supabase 일별 데이터 자동 계산 (MoM)</span>
+              <span class="text-xs text-dim font-mono-num">9대 핵심 지수 · 환율 · 달러 · 유가 · VIX</span>
             </div>
 
-            <div class="glass-card table-card">
-              <div class="table-scroll">
-                <table class="macro-compare-table">
+            <div class="glass-card overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr>
-                      <th>지표명</th>
-                      <th class="text-right" id="m_thPrevMacro">직전월 마감</th>
-                      <th class="text-center">해당월 최고 / 최저</th>
-                      <th class="text-right" id="m_thCurMacro">해당월 최신</th>
-                      <th class="text-right">월간 변동 (MoM)</th>
-                      <th>월간 흐름 요약</th>
+                    <tr class="subtle-box border-b border-slate-700/70 text-sub font-semibold">
+                      <th class="py-3 px-3 whitespace-nowrap">지표명 (구분)</th>
+                      <th id="m_thPrevMacro" class="py-3 px-3 text-right whitespace-nowrap">직전월 마감</th>
+                      <th class="py-3 px-3 text-center whitespace-nowrap">해당월 최고 / 최저</th>
+                      <th id="m_thCurMacro" class="py-3 px-3 text-right whitespace-nowrap">해당월 기준</th>
+                      <th class="py-3 px-3 text-right whitespace-nowrap">월간 변동 (MoM)</th>
+                      <th class="py-3 px-3 min-w-[220px]">월간 핵심 트렌드 요약</th>
                     </tr>
                   </thead>
-                  <tbody id="m_macroTableBody"></tbody>
+                  <tbody id="m_macroTableBody" class="divide-y divide-slate-800/60"></tbody>
                 </table>
               </div>
             </div>
           </section>
 
-          <!-- M2: 해당월 일별 주요 지수 추이 차트 (공개 지표 기반) -->
-          <section class="section-block">
-            <div class="section-head">
-              <div class="section-head-left">
-                <span class="sec-num">M2</span>
-                <h2>해당월 일별 주요 지수 추이</h2>
+          <!-- M2: Daily Index Trajectory Bar Chart -->
+          <section class="space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 font-extrabold text-sm flex items-center justify-center">M2</span>
+                <h2 class="text-lg sm:text-xl font-bold text-main tracking-tight">해당월 일별 주요 지수 추이</h2>
               </div>
-              <div id="m-chart-indicator-tabs" class="segmented">
-                <button class="seg-btn active" data-ind="sp500">S&amp;P 500</button>
-                <button class="seg-btn" data-ind="nasdaq">나스닥</button>
-                <button class="seg-btn" data-ind="kospi">코스피</button>
-                <button class="seg-btn" data-ind="usdkrw">원/달러</button>
-                <button class="seg-btn" data-ind="vix">VIX</button>
+              <div id="m-chart-indicator-tabs" class="inline-flex flex-wrap p-1 rounded-lg subtle-box gap-1">
+                <button type="button" class="seg-btn active" data-ind="sp500">S&amp;P 500</button>
+                <button type="button" class="seg-btn" data-ind="nasdaq">나스닥</button>
+                <button type="button" class="seg-btn" data-ind="dow">다우</button>
+                <button type="button" class="seg-btn" data-ind="kospi">코스피</button>
+                <button type="button" class="seg-btn" data-ind="kosdaq">코스닥</button>
+                <button type="button" class="seg-btn" data-ind="usdkrw">원/달러</button>
+                <button type="button" class="seg-btn" data-ind="dxy">DXY</button>
+                <button type="button" class="seg-btn" data-ind="wti">WTI</button>
+                <button type="button" class="seg-btn" data-ind="vix">VIX</button>
               </div>
             </div>
 
-            <div class="glass-card p-16">
-              <div id="m_trajMeta" class="traj-meta mono"></div>
-              <div id="m_trajectoryChartContainer" class="traj-wrap"></div>
+            <div class="glass-card p-4 space-y-3">
+              <div id="m_trajMeta" class="text-xs text-dim font-mono-num"></div>
+              <div id="m_trajectoryChartContainer" class="w-full overflow-x-auto pb-1"></div>
             </div>
           </section>
         </div>
       </div>
 
       <!-- =======================================================
-           페이지 B: 내 포트폴리오 (2단계 비공개 예정)
+           PAGE B: PORTFOLIO PLACEHOLDER (Phase 2 Private)
            ======================================================= -->
-      <div id="page-portfolio" class="page-view hidden">
-        <section class="glass-card portfolio-placeholder">
-          <div class="placeholder-badge"><i class="fa-solid fa-shield-halved"></i> 2단계 개발 예정 (Zero-Exposure 비공개 영역)</div>
-          <h2>심플 포트폴리오</h2>
-          <p>
-            개인 자산 정보는 깃허브 저장소와 공개 데이터베이스에 단 한 줄도 노출되지 않도록 완전 분리되어 있습니다.<br />
-            2단계에서 비공개 구글 시트(Google Sheets)의 <strong>종목 · 주식수 · 매입단가</strong> 3가지 정보만 안전하게 연동하여<br />
+      <div id="page-portfolio" class="hidden">
+        <section class="glass-card p-10 text-center space-y-4">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-bold border border-blue-500/30">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>2단계 개발 예정 (Zero-Exposure 비공개 영역)</span>
+          </div>
+          <h2 class="text-2xl font-extrabold text-main">심플 포트폴리오</h2>
+          <p class="text-sm text-sub max-w-xl mx-auto leading-relaxed">
+            개인 자산 정보는 깃허브와 공개 데이터베이스에 단 한 줄도 저장되지 않도록 완전 분리되어 있습니다.<br />
+            2단계에서 비공개 구글 시트(Google Sheets)의 <b>종목 · 주식수 · 매입단가</b> 3가지 정보만 안전하게 연동하여<br />
             평가손익, 수익률, 종목별 비중을 별도 화면으로 렌더링합니다.
           </p>
-          <button id="back-to-briefing-btn" class="primary-btn">시장 브리핑으로 돌아가기</button>
+          <button id="back-to-briefing-btn" type="button" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold">
+            시장 브리핑으로 돌아가기
+          </button>
         </section>
       </div>
 
-      <footer class="app-footer">
-        <div>Market Brief · Supabase Live DB &amp; GitHub Actions 자동화 대시보드</div>
-        <div class="footer-sub">미국 현지 마감 종가 및 한국 시장 전일 종가 기반 공개 시황 리포트 (개인 자산정보 완전 분리)</div>
+      <footer class="text-center text-xs text-dim pt-5 pb-4 border-t border-slate-800/70">
+        <div>Market Brief v3 · Supabase Live DB &amp; GitHub Actions 자동화 대시보드</div>
+        <div class="text-[11px] opacity-75 mt-1">미국 현지 마감 종가 및 한국 시장 전일 종가 기반 공개 시황 리포트 (개인 자산정보 완전 분리)</div>
       </footer>
     </main>
   </div>
 
-  <script src="./js/config.js"></script>
-  <script src="./js/briefing.js"></script>
+  <!-- Embedded Fallback Snapshot (2026-11-24 Public Data, used ONLY if DB has 0 rows) -->
+  <script id="fallbackBriefingJson" type="application/json">{"briefing_date": "2026-11-24", "macro_data": [{"key": "sp500", "name": "S&P 500", "symbol": "^GSPC", "price": 7237.17, "display_val": "7,237.17", "change_pct": 4.73, "delta_text": "▲ +326.78 pt (+4.73%)", "note": "미 11/23 마감 (역대 33번째 일간 상승률)"}, {"key": "nasdaq", "name": "나스닥 종합 (IXIC)", "symbol": "^IXIC", "price": 24089.56, "display_val": "24,089.56", "change_pct": 6.51, "delta_text": "▲ +1,471.83 pt (+6.51%)", "note": "미 11/23 마감 (젠슨 황 복귀 랠리)"}, {"key": "dow", "name": "다우존스 (DJI)", "symbol": "^DJI", "price": 49595.31, "display_val": "49,595.31", "change_pct": 3.01, "delta_text": "▲ +1,447.98 pt (+3.01%)", "note": "미 11/23 마감 (49,500선 회복)"}, {"key": "kospi", "name": "코스피 (KOSPI)", "symbol": "^KS11", "price": 4708.54, "display_val": "4,708.54", "change_pct": -3.31, "delta_text": "▼ -161.42 pt (-3.31%)", "note": "한국 11/23 마감 (이틀 연속 매도 사이드카)"}, {"key": "kosdaq", "name": "코스닥 (KOSDAQ)", "symbol": "^KQ11", "price": 635.45, "display_val": "635.45", "change_pct": -1.58, "delta_text": "▼ -10.23 pt (-1.58%)", "note": "한국 11/23 마감 (외인·개인 동반 매도)"}, {"key": "usdkrw", "name": "원/달러 환율", "symbol": "KRW=X", "price": 1345.9, "display_val": "1,345.90원", "change_pct": 0.73, "delta_text": "▲ +9.70원 (+0.73%)", "note": "11/23 외환마감 (실시간 1,341.50원)"}, {"key": "dxy", "name": "달러 인덱스 (DXY)", "symbol": "DX-Y.NYB", "price": 104.17, "display_val": "104.17", "change_pct": 0.31, "delta_text": "▲ +0.42 pt (+0.31%)", "note": "11/23 마감 (Investing.com 공식 확인)"}, {"key": "wti", "name": "국제유가 (WTI/두바이)", "symbol": "CL=F", "price": 80.17, "display_val": "$80.17 / $91.47(11/20)", "change_pct": -3.88, "delta_text": "WTI -3.88% / 두바이(11/23 확인필요)", "note": "WTI $80.17 · 두바이유 11/20 종가 $91.47"}, {"key": "vix", "name": "변동성지수 (VIX)", "symbol": "^VIX", "price": 26.62, "display_val": "26.62", "change_pct": -25.83, "delta_text": "▼ -9.27 pt (-25.83%)", "note": "CBOE VIX 공식 확인 (공포심리 급락)"}], "heatmap_data": {"finviz_html": "<div class=\"md:col-span-5 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5\"> <div class=\"flex justify-between items-center text-xs font-bold font-sans text-slate-300 border-b border-slate-800 pb-1.5\"> <span>Technology (젠슨 황 CEO 복귀 · 엔비디아 +31.48% 폭등)</span> <span class=\"text-emerald-400 text-[11px]\">나스닥 +6.51%</span> </div> <div class=\"grid grid-cols-3 gap-2\"> <div class=\"finviz-tile finviz-gain col-span-2 py-4\"> <span class=\"font-extrabold text-white text-base\">NVDA</span> <span class=\"text-xs text-emerald-100 font-mono font-bold\">+31.48% ($165.05)</span> </div> <div class=\"finviz-tile finviz-gain-light py-4\"> <span class=\"font-bold text-white text-xs\">MSFT</span> <span class=\"text-[11px] text-emerald-200 font-mono font-semibold\">+1.65% ($492.50)</span> </div> <div class=\"finviz-tile finviz-gain\"><span class=\"font-bold text-white text-xs\">ASML</span><span class=\"text-[10px] text-emerald-100 font-mono\">+9.25% ($1,383.30)</span></div> <div class=\"finviz-tile finviz-gain\"><span class=\"font-bold text-white text-xs\">PLTR</span><span class=\"text-[10px] text-emerald-100 font-mono\">+11.06% ($159.36)</span></div> <div class=\"finviz-tile finviz-gain\"><span class=\"font-bold text-white text-xs\">JEPQ</span><span class=\"text-[10px] text-emerald-100 font-mono\">+6.27% ($54.03)</span></div> </div> </div> <div class=\"md:col-span-4 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5\"> <div class=\"flex justify-between items-center text-xs font-bold font-sans text-slate-300 border-b border-slate-800 pb-1.5\"> <span>Consumer &amp; Comm Services (테슬라 +11.46% · 알파벳 +6.34%)</span> <span class=\"text-emerald-400 text-[11px]\">성장주 전면 급반등</span> </div> <div class=\"grid grid-cols-2 gap-2\"> <div class=\"finviz-tile finviz-gain py-3.5\"><span class=\"font-extrabold text-white text-sm\">TSLA</span><span class=\"text-xs text-emerald-100 font-mono font-bold\">+11.46% ($385.46)</span></div> <div class=\"finviz-tile finviz-gain py-3.5\"><span class=\"font-bold text-white text-xs\">AMZN</span><span class=\"text-[11px] text-emerald-100 font-mono font-semibold\">+3.47% ($255.39)</span></div> <div class=\"finviz-tile finviz-gain col-span-2 py-2.5\"><span class=\"font-bold text-white text-xs\">GOOGL</span><span class=\"text-[11px] text-emerald-100 font-mono font-semibold\">+6.34% ($282.10)</span></div> </div> </div> <div class=\"md:col-span-3 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5\"> <div class=\"flex justify-between items-center text-xs font-bold font-sans text-slate-300 border-b border-slate-800 pb-1.5\"> <span>Financial, Health &amp; Dividend</span> <span class=\"text-emerald-400 text-[11px]\">금융·배당 상승 / 방어주 숨고르기</span> </div> <div class=\"grid grid-cols-2 gap-2\"> <div class=\"finviz-tile finviz-gain-light\"><span class=\"font-bold text-white text-xs\">BAC</span><span class=\"text-[10px] text-emerald-200 font-mono\">+2.34% ($48.14)</span></div> <div class=\"finviz-tile finviz-gain-light\"><span class=\"font-bold text-white text-xs\">SCHD</span><span class=\"text-[10px] text-emerald-200 font-mono\">+1.33% ($34.39)</span></div> <div class=\"finviz-tile finviz-loss-light\"><span class=\"font-bold text-white text-xs\">UNH</span><span class=\"text-[10px] text-rose-200 font-mono\">-1.11% ($336.08)</span></div> <div class=\"finviz-tile finviz-loss-light\"><span class=\"font-bold text-white text-xs\">KO</span><span class=\"text-[10px] text-rose-200 font-mono\">-1.14% ($95.88)</span></div> </div> </div> <div class=\"md:col-span-12 bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs\"> <span class=\"text-slate-300\">11월 23일 미 증시 동향: 젠슨 황 CEO 복귀 소식에 엔비디아(+31.48%)·테슬라(+11.46%)·팔란티어(+11.06%)·ASML(+9.25%)이 폭등하며 나스닥(+6.51%)·S&amp;P 500(+4.73%)이 기록적 랠리를 펼쳤습니다.</span> <span class=\"text-emerald-400 font-mono font-semibold\">VIX 26.62 (-25.83% 급락 안정)</span> </div>", "sectors": []}, "ai_summary": {"headline": "젠슨 황 엔비디아 CEO 전격 복귀에 NVDA +31.48% 폭등 & 나스닥 +6.51% 대반등", "us_date_label": "미국 11/23 월 마감 종가 기준", "kr_date_label": "한국 11/23 월 전일 종가 기준", "fx_val": "1,345.90원", "fx_delta": "▲ +9.70원 (+0.73%) · 실시간 1,341.50원", "takeaways": [{"title": "젠슨 황 엔비디아 CEO 전격 복귀에 NVDA +31.48% 폭등 & 나스닥 +6.51% 대반등", "detail": "엔비디아 이사회가 23일(현지시간) 젠슨 황 CEO의 전격 복귀를 발표하고 트럼프 대통령이 국가안보 보장을 시사하면서 엔비디아 주가가 $165.05(+31.48%)로 2003년 이후 최대폭 급등했습니다. 이에 힘입어 나스닥(+6.51%, 24,089.56), S&P 500(+4.73%, 7,237.17), 다우(+3.01%, 49,595.31)가 일제히 폭등했습니다."}, {"title": "빅테크·성장주 전면 랠리 및 VIX -25.83%(26.62) 급락으로 위험선호 심리 복원", "detail": "테슬라(+11.46%, $385.46), 팔란티어(+11.06%, $159.36), ASML(+9.25%, $1,383.30), 알파벳(+6.34%, $282.10), 아마존(+3.47%, $255.39) 등 성장주가 폭발적으로 반등했고, VIX가 35.89에서 26.62(-25.83%)로 급락하며 시장 공포가 빠르게 완화되었습니다. 국제유가(WTI) 역시 $80.17(-3.88%)로 안정세를 보였습니다."}, {"title": "전일 코스피 4,708.54(-3.31%) 이틀 연속 사이드카 후 금일 미 증시 급등발 강력한 반등 기대", "detail": "전일(23일) 한국 증시는 금요일 미국발 AI 투매 쇼크가 직격하며 이틀 연속 매도 사이드카가 발동돼 코스피 4,708.54(-3.31%), 코스닥 635.45(-1.58%), 원/달러 환율 1,345.90원(+9.70원)에 마감했으나, 간밤 엔비디아·나스닥 폭등에 따라 금일 큰 폭의 반등 출발이 예상됩니다."}], "sector_flow": "", "news_links": [{"title": "S&P 500 Rises 4.73% to 7237.17 — Data Talk", "url": "https://www.morningstar.com/news/dow-jones/202611238731/sp-500-rises-473-to-723717-data-talk", "source": "Morningstar"}, {"title": "NASDAQ Composite Rises 6.51% to 24089.56 — Data Talk", "url": "https://www.morningstar.com/news/dow-jones/202611238734/nasdaq-composite-rises-651-to-2408956-data-talk", "source": "Morningstar"}, {"title": "DJIA Rises 3.01% to 49595.31 — Data Talk", "url": "https://www.morningstar.com/news/dow-jones/202611238726/djia-rises-301-to-4959531-data-talk", "source": "Morningstar"}, {"title": "Front Month Nymex Crude Fell 3.88% to Settle at $80.17 — Data Talk", "url": "https://www.morningstar.com/news/dow-jones/202611237494/front-month-nymex-crude-fell-388-to-settle-at-8017-data-talk", "source": "Morningstar"}, {"title": "[e마켓클로징] 코스피 3.3% 급락, 사이드카 속 4700선 턱걸이", "url": "https://www.sisajournal-e.com/news/articleView.html?idxno=425253", "source": "시사저널e"}, {"title": "코스피, 3.31% 내린 4,708.54 종료…코스닥도 1%대 하락", "url": "https://www.yonhapnewstv.co.kr/news/AKR20261123153806FU3", "source": "연합뉴스TV"}], "youtube_links": [{"title": "KOSPI Barely Holds 4700 on Institutional Buying… [11월 23일 마감시황]", "url": "https://www.youtube.com/watch?v=jaPhozrfT2c", "source": "한경 글로벌마켓"}, {"title": "Amidst the U.S.-led AI shock Black Monday.. [박신영의 개장전 요것만-11월23일]", "url": "https://www.youtube.com/watch?v=W2D_UiqlrMw", "source": "한경 글로벌마켓"}, {"title": "Is the Memory Supercycle Nearing Its End? | Wall Street Briefing", "url": "https://www.youtube.com/watch?v=Qbohameg3R0", "source": "한경 글로벌마켓"}]}, "key_movers": {"gainers": [{"ticker": "NVDA", "name": "엔비디아 (NVDA)", "market": "해외주식", "change_pct": 31.48, "delta_text": "+31.48%", "reason": "젠슨 황 CEO 전격 복귀 및 트럼프 대통령 안보 보장에 $165.05(+31.48%) 폭등"}, {"ticker": "TSLA", "name": "테슬라 (TSLA)", "market": "해외주식", "change_pct": 11.46, "delta_text": "+11.46%", "reason": "나스닥 +6.51% 대반등 및 위험자산 선호 복원에 $385.46(+11.46%) 급등"}, {"ticker": "PLTR", "name": "팔란티어 (PLTR)", "market": "해외주식", "change_pct": 11.06, "delta_text": "+11.06%", "reason": "AI 소프트웨어·데이터 섹터 동반 매수세 유입으로 $159.36(+11.06%) 강세"}], "losers": [{"ticker": "005930", "name": "삼성전자 (005930)", "market": "국내주식", "change_pct": -3.06, "delta_text": "-3.06%", "reason": "전일(23일) 국내장 매도 사이드카 충격 반영으로 177,500원(-3.06%) 하락 마감"}, {"ticker": "000660", "name": "SK하이닉스 (000660)", "market": "국내주식", "change_pct": -2.52, "delta_text": "-2.52%", "reason": "전일 외국인 7거래일 연속 순매도 여파로 1,085,000원(-2.52%) 조정 마감"}, {"ticker": "KO", "name": "코카콜라 (KO)", "market": "해외주식", "change_pct": -1.14, "delta_text": "-1.14%", "reason": "기술주 급반등 속 방어주 차익실현 매물 출회로 $95.88(-1.14%) 소폭 하락"}]}, "watchlist_comments": [], "calendar_events": []}</script>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ---------------------------------------------------------
+      // 1. Supabase Public Config (Publishable Key ONLY)
+      // ---------------------------------------------------------
+      const SUPABASE_URL = "https://esbmqqqgpugicvxnfeqt.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_fa7-OwRpTiq0OVkrUFllcg_3s_Ii-n1";
+
+      const DEFAULT_WATCHLIST = [
+        { tv_symbol: "NASDAQ:NVDA",  yf_ticker: "NVDA",      name: "엔비디아",              asset_type: "해외주식", sector: "AI/반도체" },
+        { tv_symbol: "NASDAQ:GOOGL", yf_ticker: "GOOGL",     name: "알파벳 A",              asset_type: "해외주식", sector: "빅테크" },
+        { tv_symbol: "NASDAQ:ASML",  yf_ticker: "ASML",      name: "ASML",                  asset_type: "해외주식", sector: "AI/반도체" },
+        { tv_symbol: "NASDAQ:MSFT",  yf_ticker: "MSFT",      name: "마이크로소프트",        asset_type: "해외주식", sector: "빅테크" },
+        { tv_symbol: "NASDAQ:TSLA",  yf_ticker: "TSLA",      name: "테슬라",                asset_type: "해외주식", sector: "로보틱스" },
+        { tv_symbol: "NASDAQ:AMZN",  yf_ticker: "AMZN",      name: "아마존닷컴",            asset_type: "해외주식", sector: "빅테크" },
+        { tv_symbol: "NASDAQ:PLTR",  yf_ticker: "PLTR",      name: "팔란티어 테크",         asset_type: "해외주식", sector: "AI/반도체" },
+        { tv_symbol: "NYSE:UNH",     yf_ticker: "UNH",       name: "유나이티드 헬스 그룹",  asset_type: "해외주식", sector: "헬스케어/금융" },
+        { tv_symbol: "NYSE:BAC",     yf_ticker: "BAC",       name: "뱅크오브아메리카",      asset_type: "해외주식", sector: "헬스케어/금융" },
+        { tv_symbol: "NYSE:O",       yf_ticker: "O",         name: "리얼티인컴",            asset_type: "해외주식", sector: "배당/인컴" },
+        { tv_symbol: "AMEX:SCHD",    yf_ticker: "SCHD",      name: "SCHD",                  asset_type: "해외주식", sector: "배당/인컴" },
+        { tv_symbol: "NYSE:KO",      yf_ticker: "KO",        name: "코카콜라",              asset_type: "해외주식", sector: "배당/인컴" },
+        { tv_symbol: "NASDAQ:JEPQ",  yf_ticker: "JEPQ",      name: "JEPQ",                  asset_type: "해외주식", sector: "배당/인컴" },
+        { tv_symbol: "KRX:000660",   yf_ticker: "000660.KS", name: "SK하이닉스",            asset_type: "국내주식", sector: "AI/반도체" },
+        { tv_symbol: "KRX:005930",   yf_ticker: "005930.KS", name: "삼성전자",              asset_type: "국내주식", sector: "AI/반도체" },
+        { tv_symbol: "KRX:379800",   yf_ticker: "379800.KS", name: "KODEX 미국S&P500",      asset_type: "ETF",      sector: "지수/인덱스" },
+        { tv_symbol: "KRX:379810",   yf_ticker: "379810.KS", name: "KODEX 미국나스닥100",   asset_type: "ETF",      sector: "지수/인덱스" },
+        { tv_symbol: "KRX:411060",   yf_ticker: "411060.KS", name: "ACE KRX금현물",         asset_type: "ETF",      sector: "안전자산" },
+        { tv_symbol: "KRX:489250",   yf_ticker: "489250.KS", name: "KODEX 미국배당다우존스", asset_type: "ETF",      sector: "배당/인컴" }
+      ];
+
+      const FALLBACK_BRIEFING = JSON.parse(document.getElementById("fallbackBriefingJson").textContent);
+
+      const MONTHLY_INDICATORS = [
+        { key: "sp500",  label: "S&P 500",          cat: "미국 증시", invert: false, unit: "" },
+        { key: "nasdaq", label: "나스닥 종합 (IXIC)", cat: "미국 증시", invert: false, unit: "" },
+        { key: "dow",    label: "다우존스 (DJI)",    cat: "미국 증시", invert: false, unit: "" },
+        { key: "kospi",  label: "코스피 (KOSPI)",    cat: "한국 증시", invert: false, unit: "" },
+        { key: "kosdaq", label: "코스닥 (KOSDAQ)",   cat: "한국 증시", invert: false, unit: "" },
+        { key: "usdkrw", label: "원/달러 환율",       cat: "외환/달러", invert: false, unit: "원" },
+        { key: "dxy",    label: "달러 인덱스 (DXY)",  cat: "외환/달러", invert: false, unit: "" },
+        { key: "wti",    label: "국제유가 (WTI)",     cat: "원자재",   invert: false, unit: "$" },
+        { key: "vix",    label: "변동성지수 (VIX)",   cat: "리스크",   invert: true,  unit: "" },
+        { key: "us10y",  label: "미 국채 10년물",     cat: "금리",     invert: false, unit: "%" }
+      ];
+
+      // ---------------------------------------------------------
+      // 2. App State
+      // ---------------------------------------------------------
+      const state = {
+        supabase: null,
+        availableDates: [],
+        allMacroByDate: {},
+        monthlyReportsMap: {},
+        currentDate: null,
+        currentBriefing: null,
+        currentView: "daily",
+        currentMonthKey: null,
+        monthlyChartIndicator: "sp500",
+        heatmapMode: "snapshot",
+        watchlist: [...DEFAULT_WATCHLIST],
+        wlTypeFilter: "all",
+        wlSectorFilter: "all",
+        selectedWatchlistTicker: "NVDA",
+        isSampleMode: false,
+        theme: localStorage.getItem("mb_theme") || "dark",
+        marketColor: localStorage.getItem("mb_market_color") || "us"
+      };
+
+      // ---------------------------------------------------------
+      // 3. Utilities
+      // ---------------------------------------------------------
+      function esc(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function safeUrl(url) {
+        if (typeof url !== "string") return "#";
+        const t = url.trim();
+        return t.startsWith("https://") || t.startsWith("http://") ? t : "#";
+      }
+
+      function weekdayLabel(dateStr) {
+        if (!dateStr) return "-";
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const d = new Date(dateStr + "T00:00:00");
+        return Number.isNaN(d.getTime()) ? dateStr : `${dateStr} (${days[d.getDay()]})`;
+      }
+
+      function fmtNum(n, digits = 2) {
+        if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
+        return Number(n).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+      }
+
+      function deltaCls(pct, invertVix = false) {
+        const n = Number(pct);
+        if (Number.isNaN(n) || n === 0) return "text-flat";
+        const up = invertVix ? n < 0 : n > 0;
+        return up ? "text-up" : "text-down";
+      }
+
+      function normMacroKey(item) {
+        if (item.key) return item.key;
+        const sym = String(item.symbol || "").toUpperCase();
+        const name = String(item.name || "").toUpperCase();
+        if (sym === "^GSPC" || name.includes("S&P")) return "sp500";
+        if (sym === "^IXIC" || name.includes("NASDAQ") || name.includes("나스닥")) return "nasdaq";
+        if (sym === "^DJI" || name.includes("DOW") || name.includes("다우")) return "dow";
+        if (sym === "^KS11" || name.includes("KOSPI") || name.includes("코스피")) return "kospi";
+        if (sym === "^KQ11" || name.includes("KOSDAQ") || name.includes("코스닥")) return "kosdaq";
+        if (sym === "KRW=X" || name.includes("USD/KRW") || name.includes("환율")) return "usdkrw";
+        if (sym === "DX-Y.NYB" || name.includes("DXY") || name.includes("달러")) return "dxy";
+        if (sym === "CL=F" || name.includes("WTI") || name.includes("유가")) return "wti";
+        if (sym === "^VIX" || name.includes("VIX") || name.includes("변동성")) return "vix";
+        if (sym === "^TNX" || name.includes("10Y") || name.includes("국채")) return "us10y";
+        return name;
+      }
+
+      function applyPreferences() {
+        document.documentElement.setAttribute("data-theme", state.theme);
+        document.documentElement.setAttribute("data-market-color", state.marketColor);
+        const icon = document.getElementById("theme-icon");
+        if (icon) icon.className = state.theme === "dark" ? "fa-solid fa-sun text-xs" : "fa-solid fa-moon text-xs";
+        const cBtn = document.getElementById("color-scheme-btn");
+        if (cBtn) cBtn.textContent = state.marketColor === "kr" ? "KR 색상" : "US 색상";
+      }
+
+      function setStatusBadge(type, text) {
+        const el = document.getElementById("db-status-badge");
+        if (!el) return;
+        const styles = {
+          live: "bg-emerald-500/15 text-emerald-400 border-emerald-500/35",
+          sample: "bg-amber-500/15 text-amber-400 border-amber-500/35",
+          loading: "bg-slate-800 text-slate-300 border-slate-700"
+        };
+        el.className = `text-[11px] font-bold px-2.5 py-1 rounded-full border ${styles[type] || styles.loading}`;
+        el.textContent = text;
+      }
+
+      function showNotice(html) {
+        const b = document.getElementById("notice-banner");
+        const t = document.getElementById("notice-text");
+        if (b && t) { t.innerHTML = html; b.classList.remove("hidden"); }
+      }
+
+      function hideNotice() {
+        document.getElementById("notice-banner")?.classList.add("hidden");
+      }
+
+      // ---------------------------------------------------------
+      // 4. Supabase Bootstrap
+      // ---------------------------------------------------------
+      async function bootstrapData() {
+        setStatusBadge("loading", "DB 조회 중...");
+        if (!window.supabase) {
+          activateFallback("Supabase SDK 로드에 실패하여 내장 미리보기(2026-11-24)를 표시합니다.");
+          return;
+        }
+        state.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+        try {
+          // A. Watchlist
+          const wlRes = await state.supabase
+            .from("watchlist")
+            .select("*")
+            .eq("is_active", true)
+            .order("display_order", { ascending: true });
+
+          if (!wlRes.error && Array.isArray(wlRes.data) && wlRes.data.length > 0) {
+            state.watchlist = wlRes.data.map((r) => ({
+              tv_symbol: r.tv_symbol,
+              yf_ticker: r.yf_ticker,
+              name: r.name,
+              asset_type: r.asset_type || (String(r.tv_symbol || "").startsWith("KRX:") ? "국내주식" : "해외주식"),
+              sector: r.sector || "기타"
+            }));
+            if (!state.watchlist.some((w) => w.yf_ticker === state.selectedWatchlistTicker)) {
+              state.selectedWatchlistTicker = state.watchlist[0].yf_ticker;
+            }
+          }
+
+          // B. Precomputed Monthly Reports (optional table; gracefully ignored if not created yet)
+          const monRes = await state.supabase.from("monthly_reports").select("*");
+          state.monthlyReportsMap = {};
+          if (!monRes.error && Array.isArray(monRes.data)) {
+            monRes.data.forEach((m) => { state.monthlyReportsMap[m.month_key] = m; });
+          }
+
+          // C. All Briefing Dates + Macro Data
+          const listRes = await state.supabase
+            .from("daily_briefings")
+            .select("briefing_date, macro_data")
+            .order("briefing_date", { ascending: false });
+
+          if (listRes.error) throw listRes.error;
+
+          const rows = listRes.data || [];
+          state.availableDates = rows.map((r) => r.briefing_date);
+          state.allMacroByDate = {};
+          rows.forEach((r) => { state.allMacroByDate[r.briefing_date] = r.macro_data || []; });
+
+          if (state.availableDates.length === 0) {
+            activateFallback(
+              "수파베이스 연결은 정상이나 <code>daily_briefings</code> 테이블에 적재된 데이터가 0건입니다. " +
+              "동봉된 <code>sql/01</code>~<code>03</code> 파일을 Supabase SQL Editor에서 실행하면 19일 치 전체 데이터와 월간 비교가 즉시 활성화됩니다."
+            );
+            return;
+          }
+
+          state.isSampleMode = false;
+          setStatusBadge("live", `LIVE DB (${state.availableDates.length}일)`);
+          if (state.availableDates.length < 5) {
+            showNotice(
+              `현재 Supabase DB에 <b>${state.availableDates.length}일</b> 데이터만 적재되어 있습니다. ` +
+              `과거 19일 치 전체 아카이브와 월간 비교를 보려면 <code>sql/01</code>~<code>03</code> 파일을 Supabase SQL Editor에서 실행해 주세요.`
+            );
+          } else {
+            hideNotice();
+          }
+
+          state.currentDate = state.availableDates[0];
+          renderArchiveSidebar(state.availableDates);
+          await loadBriefingByDate(state.availableDates[0]);
+        } catch (err) {
+          console.error("Supabase error:", err);
+          activateFallback(`수파베이스 조회 오류로 내장 미리보기(2026-11-24)를 표시합니다. (오류: ${esc(err.message || err)})`);
+        }
+      }
+
+      function activateFallback(msgHtml) {
+        state.isSampleMode = true;
+        state.availableDates = [FALLBACK_BRIEFING.briefing_date];
+        state.allMacroByDate = { [FALLBACK_BRIEFING.briefing_date]: FALLBACK_BRIEFING.macro_data };
+        state.currentDate = FALLBACK_BRIEFING.briefing_date;
+        state.currentBriefing = FALLBACK_BRIEFING;
+        setStatusBadge("sample", "미리보기 모드");
+        showNotice(msgHtml);
+        renderArchiveSidebar(state.availableDates);
+        renderFullBriefing(FALLBACK_BRIEFING);
+      }
+
+      async function loadBriefingByDate(dateStr) {
+        showDailyView();
+        if (state.isSampleMode) {
+          renderFullBriefing(FALLBACK_BRIEFING);
+          return;
+        }
+        try {
+          const { data, error } = await state.supabase
+            .from("daily_briefings")
+            .select("*")
+            .eq("briefing_date", dateStr)
+            .single();
+          if (error) throw error;
+          state.currentDate = dateStr;
+          state.currentBriefing = data;
+          // Auto-select day snapshot tilemap if available for this date!
+          const hasSnap = Boolean(data.heatmap_data && (data.heatmap_data.finviz_html || (data.heatmap_data.sectors && data.heatmap_data.sectors.length)));
+          state.heatmapMode = hasSnap ? "snapshot" : "live";
+          highlightSidebar();
+          renderFullBriefing(data);
+          closeMobileSidebar();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (err) {
+          console.error("Date load failed:", err);
+          showNotice(`날짜(${esc(dateStr)}) 데이터 조회 실패: ${esc(err.message || err)}`);
+        }
+      }
+
+      // ---------------------------------------------------------
+      // 5. View Switching & Sidebar Archive
+      // ---------------------------------------------------------
+      function showDailyView() {
+        state.currentView = "daily";
+        document.getElementById("dailyBriefingView")?.classList.remove("hidden");
+        document.getElementById("monthlyComparisonView")?.classList.add("hidden");
+        highlightSidebar();
+      }
+
+      function openMonthlyReport(monthKey) {
+        // Ensure we are on Briefing page tab
+        document.querySelector('.nav-tab[data-page="briefing"]')?.click();
+        state.currentView = "monthly";
+        state.currentMonthKey = monthKey;
+        document.getElementById("dailyBriefingView")?.classList.add("hidden");
+        document.getElementById("monthlyComparisonView")?.classList.remove("hidden");
+        document.getElementById("monthGroupBox_" + monthKey)?.classList.remove("collapsed");
+        highlightSidebar();
+        renderMonthlyComparison(monthKey);
+        closeMobileSidebar();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderArchiveSidebar(dates, filterText = "") {
+        const tree = document.getElementById("archive-tree");
+        const countEl = document.getElementById("archive-count");
+        if (!tree) return;
+
+        const filtered = filterText ? dates.filter((d) => d.includes(filterText.trim())) : dates;
+        if (countEl) countEl.textContent = `${filtered.length} Days`;
+
+        if (!filtered.length) {
+          tree.innerHTML = `<div class="text-center text-xs text-dim py-6">일치하는 브리핑이 없습니다.</div>`;
+          return;
+        }
+
+        const groups = {};
+        filtered.forEach((d) => {
+          const ym = d.slice(0, 7);
+          if (!groups[ym]) groups[ym] = [];
+          groups[ym].push(d);
+        });
+
+        const months = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+        const latestDate = dates[0];
+
+        tree.innerHTML = months.map((ym, idx) => {
+          const [y, m] = ym.split("-");
+          const list = groups[ym];
+          const minD = list[list.length - 1].slice(5).replace("-", "/");
+          const maxD = list[0].slice(5).replace("-", "/");
+          const collapsed = idx > 0 ? "collapsed" : "";
+
+          const itemsHtml = list.map((d) => {
+            const isToday = d === latestDate;
+            return `
+              <button type="button" class="date-btn" data-date="${esc(d)}">
+                <span class="flex items-center gap-1.5 truncate">
+                  <i class="fa-regular fa-calendar-check text-[10px]"></i>
+                  <span class="truncate">${esc(weekdayLabel(d))}</span>
+                </span>
+                ${isToday
+                  ? `<span class="px-1.5 py-0.2 rounded bg-blue-500 text-[9.5px] text-white font-bold">Today</span>`
+                  : `<span class="text-[9.5px] text-dim font-mono-num">Hist</span>`}
+              </button>
+            `;
+          }).join("");
+
+          return `
+            <div class="month-box ${collapsed}" id="monthGroupBox_${esc(ym)}" data-month="${esc(ym)}">
+              <div class="flex items-center justify-between gap-1">
+                <button type="button" class="month-select-btn flex-1 flex items-center gap-2 text-left py-1 px-1.5 rounded-lg hover:bg-blue-500/15 transition" data-month="${esc(ym)}" title="클릭 시 직전월 vs ${esc(y)}년 ${Number(m)}월 매크로 비교 리포트 열기">
+                  <i class="fa-solid fa-folder-open text-blue-400 text-xs shrink-0"></i>
+                  <div class="leading-tight min-w-0">
+                    <div class="text-xs font-bold text-main flex items-center gap-1.5">
+                      <span>${esc(y)}년 ${Number(m)}월</span>
+                      <span class="text-[9.5px] px-1.5 rounded bg-blue-500/20 text-blue-400 font-mono-num">${list.length}</span>
+                    </div>
+                    <div class="text-[10px] text-dim truncate">${esc(minD)} ~ ${esc(maxD)} · 월간비교 ↗</div>
+                  </div>
+                </button>
+                <button type="button" class="month-chev-btn p-1.5 rounded-lg text-dim hover:text-main hover:bg-slate-700/40 transition" data-toggle-month="${esc(ym)}" title="일별 목록 펼치기/접기">
+                  <i class="fa-solid fa-chevron-down text-[10px] month-chevron transition-transform"></i>
+                </button>
+              </div>
+              <div class="month-dates space-y-1 pl-2 border-l border-slate-700/60 ml-2 mt-1.5">${itemsHtml}</div>
+            </div>
+          `;
+        }).join("");
+
+        tree.querySelectorAll(".month-select-btn").forEach((btn) => {
+          btn.addEventListener("click", () => openMonthlyReport(btn.getAttribute("data-month")));
+        });
+
+        tree.querySelectorAll(".month-chev-btn").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const ym = btn.getAttribute("data-toggle-month");
+            document.getElementById("monthGroupBox_" + ym)?.classList.toggle("collapsed");
+          });
+        });
+
+        tree.querySelectorAll(".date-btn").forEach((btn) => {
+          btn.addEventListener("click", () => loadBriefingByDate(btn.getAttribute("data-date")));
+        });
+
+        highlightSidebar();
+      }
+
+      function highlightSidebar() {
+        document.querySelectorAll(".month-box").forEach((box) => {
+          const ym = box.getAttribute("data-month");
+          box.classList.toggle("active-month", state.currentView === "monthly" && ym === state.currentMonthKey);
+        });
+        document.querySelectorAll(".date-btn").forEach((btn) => {
+          const d = btn.getAttribute("data-date");
+          btn.classList.toggle("active", state.currentView === "daily" && d === state.currentDate);
+        });
+      }
+
+      // ---------------------------------------------------------
+      // 6. Render Daily 6 Sections
+      // ---------------------------------------------------------
+      function renderFullBriefing(data) {
+        if (!data) return;
+        const isLatest = data.briefing_date === state.availableDates[0];
+        const macroList = Array.isArray(data.macro_data) ? data.macro_data : [];
+        const summary = data.ai_summary || {};
+
+        const dateEl = document.getElementById("displayHeaderDate");
+        const badgeEl = document.getElementById("displayBadge");
+        const tagsEl = document.getElementById("displayTimezoneTags");
+        const headEl = document.getElementById("heroHeadlineText");
+
+        if (dateEl) dateEl.textContent = weekdayLabel(data.briefing_date);
+        if (badgeEl) {
+          badgeEl.textContent = isLatest ? "Today" : "Archived";
+          badgeEl.className = isLatest
+            ? "px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/35"
+            : "px-2.5 py-0.5 rounded-full text-xs font-semibold subtle-box text-dim";
+        }
+        if (tagsEl) {
+          const usTag = summary.us_date_label || "미국 전일 마감 종가 기준";
+          const krTag = summary.kr_date_label || "한국 전일 마감 종가 기준";
+          tagsEl.innerHTML = `
+            <span class="px-2.5 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">${esc(usTag)}</span>
+            <span class="px-2.5 py-0.5 rounded-full font-medium subtle-box text-sub">${esc(krTag)}</span>
+            <span class="px-2.5 py-0.5 rounded-full font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">${state.isSampleMode ? "미리보기 모드" : "Supabase LIVE 연동"}</span>
+          `;
+        }
+        if (headEl) headEl.textContent = summary.headline || "";
+
+        const fxItem = macroList.find((m) => normMacroKey(m) === "usdkrw");
+        const fxValEl = document.getElementById("displayFxVal");
+        const fxDeltaEl = document.getElementById("displayFxDelta");
+        if (fxValEl) fxValEl.textContent = summary.fx_val || fxItem?.display_val || (fxItem ? `${fmtNum(fxItem.price)}원` : "-");
+        if (fxDeltaEl) fxDeltaEl.textContent = summary.fx_delta || fxItem?.delta_text || "-";
+
+        renderHeatmapSection(data.heatmap_data);
+        renderMacroSection(macroList);
+        renderSummarySection(summary);
+        renderKeyMoversSection(data.key_movers);
+        renderWatchlistSection(data.watchlist_comments || []);
+        renderCalendarSection(data.calendar_events || []);
+      }
+
+      // Section 1: Finviz S&P 500 Map
+      function renderHeatmapSection(heatmapData) {
+        const snapPanel = document.getElementById("heatmap-snapshot-panel");
+        const livePanel = document.getElementById("heatmap-live-panel");
+        const snapBox = document.getElementById("finvizSnapshotContainer");
+
+        document.querySelectorAll("#heatmap-mode-tabs .seg-btn").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-mode") === state.heatmapMode);
+        });
+
+        if (state.heatmapMode === "snapshot") {
+          livePanel?.classList.add("hidden");
+          snapPanel?.classList.remove("hidden");
+          if (snapBox) {
+            if (heatmapData && heatmapData.finviz_html) {
+              snapBox.innerHTML = heatmapData.finviz_html;
+            } else if (heatmapData && Array.isArray(heatmapData.sectors) && heatmapData.sectors.length) {
+              snapBox.innerHTML = buildSectorTilesHtml(heatmapData);
+            } else {
+              snapBox.innerHTML = `<div class="md:col-span-12 text-center text-xs text-dim py-10">해당 일자의 섹터 타일맵 스냅샷이 없습니다. 우측 상단 <b>실시간 S&amp;P 500 히트맵</b> 탭을 눌러 확인하세요.</div>`;
+            }
+          }
+        } else {
+          snapPanel?.classList.add("hidden");
+          livePanel?.classList.remove("hidden");
+          renderTradingViewHeatmap();
+        }
+      }
+
+      function buildSectorTilesHtml(hm) {
+        const spans = ["md:col-span-5", "md:col-span-4", "md:col-span-3"];
+        const parts = (hm.sectors || []).slice(0, 3).map((sec, idx) => {
+          const tiles = (sec.tiles || []).map((t) => {
+            const p = Number(t.change_pct || 0);
+            const cls = p >= 3 ? "finviz-gain-deep" : p > 0.8 ? "finviz-gain" : p >= 0 ? "finviz-gain-light"
+                      : p <= -3 ? "finviz-loss-deep" : p < -0.8 ? "finviz-loss" : "finviz-loss-light";
+            const sign = p > 0 ? "+" : "";
+            return `<div class="finviz-tile ${cls} py-3"><span class="font-bold text-xs">${esc(t.ticker)}</span><span class="text-[10.5px] font-mono-num">${sign}${p.toFixed(2)}%${t.price ? ` ($${fmtNum(t.price)})` : ""}</span></div>`;
+          }).join("");
+          return `
+            <div class="${spans[idx] || "md:col-span-4"} bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5">
+              <div class="flex justify-between items-center text-xs font-bold text-slate-300 border-b border-slate-800 pb-1.5">
+                <span>${esc(sec.title)}</span>
+                <span class="text-blue-400 text-[11px]">${esc(sec.badge || "")}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">${tiles}</div>
+            </div>
+          `;
+        });
+        if (hm.summary_bar) {
+          parts.push(`<div class="md:col-span-12 bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-xs text-slate-300">${esc(hm.summary_bar)}</div>`);
+        }
+        return parts.join("");
+      }
+
+      function renderTradingViewHeatmap() {
+        const container = document.getElementById("heatmap-live-panel");
+        if (!container) return;
+        container.innerHTML = "";
+        const wrap = document.createElement("div");
+        wrap.className = "tradingview-widget-container";
+        wrap.style.cssText = "width:100%;height:100%;";
+        const w = document.createElement("div");
+        w.className = "tradingview-widget-container__widget";
+        wrap.appendChild(w);
+        const s = document.createElement("script");
+        s.type = "text/javascript";
+        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
+        s.async = true;
+        s.textContent = JSON.stringify({
+          exchanges: [], dataSource: "SPX500", grouping: "sector",
+          blockSize: "market_cap_basic", blockColor: "change", locale: "kr",
+          symbolUrl: "", colorTheme: state.theme === "dark" ? "dark" : "light",
+          hasTopBar: false, isDataSetEnabled: false, isZoomEnabled: true,
+          hasSymbolTooltip: true, isMonoSize: false, width: "100%", height: "100%"
+        });
+        wrap.appendChild(s);
+        container.appendChild(wrap);
+      }
+
+      // Section 2: Macro Grid
+      function renderMacroSection(macroList) {
+        const grid = document.getElementById("macro-grid");
+        if (!grid) return;
+        if (!macroList.length) {
+          grid.innerHTML = `<div class="col-span-full text-center text-xs text-dim py-6">매크로 지표 데이터가 없습니다.</div>`;
+          return;
+        }
+        grid.innerHTML = macroList.map((item) => {
+          const key = normMacroKey(item);
+          const isVix = key === "vix";
+          const cls = deltaCls(item.change_pct, isVix);
+          const valText = item.display_val || fmtNum(item.price);
+          const pct = Number(item.change_pct || 0);
+          const deltaText = item.delta_text || `${pct > 0 ? "▲ +" : pct < 0 ? "▼ " : ""}${pct.toFixed(2)}%`;
+          const noteText = item.note || item.symbol || "";
+          return `
+            <div class="glass-card p-3.5 space-y-1">
+              <div class="text-[11px] text-dim font-semibold">${esc(item.name)}</div>
+              <div class="text-base font-extrabold font-mono-num text-main">${esc(valText)}</div>
+              <div class="text-xs font-mono-num font-bold ${cls}">${esc(deltaText)}</div>
+              <div class="text-[10.5px] text-dim truncate" title="${esc(noteText)}">${esc(noteText)}</div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Section 3: Takeaways & Media Links
+      function renderSummarySection(summary) {
+        const tkEl = document.getElementById("takeawaysContainer");
+        const flowWrap = document.getElementById("sectorFlowWrapper");
+        const flowText = document.getElementById("sectorFlowText");
+        const newsEl = document.getElementById("newsLinksContainer");
+        const ytEl = document.getElementById("youtubeLinksContainer");
+
+        let takeaways = Array.isArray(summary.takeaways) ? summary.takeaways : [];
+        if (!takeaways.length && Array.isArray(summary.three_line_summary)) {
+          takeaways = summary.three_line_summary.map((line, i) => ({ title: `핵심 시사점 ${i + 1}`, detail: line }));
+        }
+
+        if (tkEl) {
+          tkEl.innerHTML = takeaways.length
+            ? takeaways.map((t, i) => `
+                <div class="glass-card p-4 space-y-1.5">
+                  <div class="flex items-start gap-2">
+                    <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">${i + 1}</span>
+                    <span class="font-bold text-main text-sm leading-snug">${esc(t.title)}</span>
+                  </div>
+                  <p class="text-xs text-sub leading-relaxed pl-7">${esc(t.detail)}</p>
+                </div>
+              `).join("")
+            : `<div class="col-span-full glass-card p-6 text-center text-xs text-dim">핵심 시사점 데이터가 없습니다.</div>`;
+        }
+
+        if (flowWrap && flowText) {
+          if (summary.sector_flow && summary.sector_flow.trim()) {
+            flowText.textContent = summary.sector_flow;
+            flowWrap.classList.remove("hidden");
+          } else {
+            flowWrap.classList.add("hidden");
+          }
+        }
+
+        let news = Array.isArray(summary.news_links) ? summary.news_links : [];
+        let yts = Array.isArray(summary.youtube_links) ? summary.youtube_links : [];
+        if (!news.length && !yts.length && Array.isArray(summary.curated_links)) {
+          summary.curated_links.forEach((l) => {
+            const u = String(l.url || "").toLowerCase();
+            if (u.includes("youtube.com") || u.includes("youtu.be") || String(l.source || "").includes("글로벌마켓")) yts.push(l);
+            else news.push(l);
+          });
+        }
+
+        if (newsEl) {
+          newsEl.innerHTML = news.length
+            ? news.map((l) => `
+                <a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-2.5 rounded-lg subtle-box hover:border-blue-500 transition gap-2 group">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i class="fa-regular fa-newspaper text-dim text-xs shrink-0"></i>
+                    <span class="text-xs text-sub group-hover:text-blue-400 truncate font-medium">${esc(l.title || l.url)}</span>
+                  </div>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 font-mono-num shrink-0">${esc(l.source || "News")}</span>
+                </a>
+              `).join("")
+            : `<div class="text-center text-xs text-dim py-4">등록된 언론 보도가 없습니다.</div>`;
+        }
+
+        if (ytEl) {
+          ytEl.innerHTML = yts.length
+            ? yts.map((l) => `
+                <a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-2.5 rounded-lg subtle-box hover:border-red-500/60 transition gap-2 group">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i class="fa-brands fa-youtube text-red-500 text-sm shrink-0"></i>
+                    <span class="text-xs text-sub group-hover:text-red-400 truncate font-medium">${esc(l.title || l.url)}</span>
+                  </div>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 font-semibold shrink-0">${esc(l.source || "YouTube")}</span>
+                </a>
+              `).join("")
+            : `<div class="text-center text-xs text-dim py-4">등록된 시황 유튜브 링크가 없습니다.</div>`;
+        }
+      }
+
+      // Section 4: Key Movers
+      function renderKeyMoversSection(km) {
+        const gainEl = document.getElementById("gainersContainer");
+        const loseEl = document.getElementById("losersContainer");
+
+        let gainers = [], losers = [];
+        if (Array.isArray(km)) {
+          gainers = km.filter((m) => Number(m.change_pct || 0) >= 0).sort((a, b) => b.change_pct - a.change_pct);
+          losers = km.filter((m) => Number(m.change_pct || 0) < 0).sort((a, b) => a.change_pct - b.change_pct);
+        } else if (km && typeof km === "object") {
+          gainers = Array.isArray(km.gainers) ? km.gainers : [];
+          losers = Array.isArray(km.losers) ? km.losers : [];
+        }
+
+        const card = (m, isUp) => {
+          const p = Number(m.change_pct || 0);
+          const pText = m.delta_text || `${p > 0 ? "+" : ""}${p.toFixed(2)}%`;
+          const cls = isUp ? "text-up" : "text-down";
+          return `
+            <div class="p-3 rounded-xl subtle-box space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <span class="font-bold text-main text-xs sm:text-sm">${esc(m.name || m.ticker)}</span>
+                  ${m.market ? `<span class="text-[11px] text-dim ml-1.5">${esc(m.market)}</span>` : ""}
+                </div>
+                <span class="font-mono-num font-extrabold text-xs sm:text-sm shrink-0 ${cls}">${esc(pText)}</span>
+              </div>
+              <div class="text-xs text-sub border-t border-slate-700/50 pt-1.5 flex items-start gap-1.5">
+                <i class="fa-solid fa-angle-right ${cls} mt-1 text-[10px] shrink-0"></i>
+                <span>${esc(m.reason || "-")}</span>
+              </div>
+            </div>
+          `;
+        };
+
+        if (gainEl) gainEl.innerHTML = gainers.length ? gainers.map((m) => card(m, true)).join("") : `<div class="text-center text-xs text-dim py-4">상승 특징주 없음</div>`;
+        if (loseEl) loseEl.innerHTML = losers.length ? losers.map((m) => card(m, false)).join("") : `<div class="text-center text-xs text-dim py-4">하락 특징주 없음</div>`;
+      }
+
+      // Section 5: Watchlist
+      function renderWatchlistSection(comments) {
+        const list = state.watchlist.length ? state.watchlist : DEFAULT_WATCHLIST;
+        const types = ["all", ...Array.from(new Set(list.map((w) => w.asset_type || "해외주식")))];
+        const sectors = ["all", ...Array.from(new Set(list.map((w) => w.sector || "기타")))];
+
+        const tBox = document.getElementById("wl-type-filters");
+        if (tBox) {
+          tBox.innerHTML = types.map((t) => `<button type="button" class="filter-pill ${state.wlTypeFilter === t ? "active-type" : ""}" data-wl-type="${esc(t)}">${t === "all" ? "전체" : esc(t)}</button>`).join("");
+          tBox.querySelectorAll("[data-wl-type]").forEach((b) => b.addEventListener("click", () => {
+            state.wlTypeFilter = b.getAttribute("data-wl-type");
+            renderWatchlistSection(comments);
+          }));
+        }
+
+        const sBox = document.getElementById("wl-sector-filters");
+        if (sBox) {
+          sBox.innerHTML = sectors.map((s) => `<button type="button" class="filter-pill ${state.wlSectorFilter === s ? "active-sector" : ""}" data-wl-sector="${esc(s)}">${s === "all" ? "전체 섹터" : esc(s)}</button>`).join("");
+          sBox.querySelectorAll("[data-wl-sector]").forEach((b) => b.addEventListener("click", () => {
+            state.wlSectorFilter = b.getAttribute("data-wl-sector");
+            renderWatchlistSection(comments);
+          }));
+        }
+
+        const filtered = list.filter((w) =>
+          (state.wlTypeFilter === "all" || w.asset_type === state.wlTypeFilter) &&
+          (state.wlSectorFilter === "all" || w.sector === state.wlSectorFilter)
+        );
+
+        const cntEl = document.getElementById("watchlistCountLabel");
+        if (cntEl) cntEl.textContent = `표시: ${filtered.length} / ${list.length} 관심종목`;
+
+        const tabsEl = document.getElementById("watchlist-tabs");
+        const gridEl = document.getElementById("watchlist-comments-grid");
+        const hlEl = document.getElementById("selected-watchlist-comment");
+
+        if (!filtered.length) {
+          if (tabsEl) tabsEl.innerHTML = `<div class="text-xs text-dim py-2">조건에 해당하는 관심종목이 없습니다.</div>`;
+          if (gridEl) gridEl.innerHTML = "";
+          return;
+        }
+
+        let sel = filtered.find((w) => w.yf_ticker === state.selectedWatchlistTicker) || filtered[0];
+        state.selectedWatchlistTicker = sel.yf_ticker;
+
+        if (tabsEl) {
+          tabsEl.innerHTML = filtered.map((item) => `
+            <button type="button" class="wl-chip ${item.yf_ticker === sel.yf_ticker ? "active" : ""}" data-ticker="${esc(item.yf_ticker)}">
+              <span>${esc(item.name)}</span>
+              <span class="text-[10.5px] opacity-80 font-mono-num">${esc(item.yf_ticker.replace(".KS", ""))}</span>
+            </button>
+          `).join("");
+          tabsEl.querySelectorAll(".wl-chip").forEach((b) => b.addEventListener("click", () => {
+            state.selectedWatchlistTicker = b.getAttribute("data-ticker");
+            renderWatchlistSection(comments);
+          }));
+        }
+
+        renderWatchlistChart(sel);
+
+        const findComment = (item) => {
+          if (!Array.isArray(comments)) return null;
+          const tk = String(item.yf_ticker || "").toUpperCase();
+          const base = tk.split(".")[0];
+          return comments.find((c) => {
+            const ct = String(c.ticker || "").toUpperCase();
+            return ct === tk || ct.split(".")[0] === base || c.name === item.name;
+          });
+        };
+
+        const mSel = findComment(sel);
+        if (hlEl) {
+          const pctStr = mSel && mSel.change_pct !== undefined
+            ? ` <span class="font-mono-num font-bold ${deltaCls(mSel.change_pct)}">(${mSel.change_pct > 0 ? "+" : ""}${Number(mSel.change_pct).toFixed(2)}%)</span>`
+            : "";
+          hlEl.innerHTML = `
+            <div class="font-bold text-main mb-1">${esc(sel.name)} (${esc(sel.yf_ticker)}) <span class="text-xs text-dim font-normal">[${esc(sel.asset_type)} · ${esc(sel.sector)}]</span>${pctStr}</div>
+            <div class="text-sub">${esc(mSel ? mSel.comment : "상단 TradingView 차트에서 실시간 가격과 기간별 추이(1D~1Y)를 확인할 수 있습니다.")}</div>
+          `;
+        }
+
+        if (gridEl) {
+          gridEl.innerHTML = filtered.map((item) => {
+            const mc = findComment(item);
+            const activeRing = item.yf_ticker === sel.yf_ticker ? "border-blue-500 ring-1 ring-blue-500/40" : "";
+            const rightBadge = mc && mc.change_pct !== undefined
+              ? `<span class="font-mono-num font-bold text-xs ${deltaCls(mc.change_pct)}">${mc.change_pct > 0 ? "+" : ""}${Number(mc.change_pct).toFixed(2)}%</span>`
+              : `<span class="font-mono-num text-[11px] text-dim">${esc(item.yf_ticker.replace(".KS", ""))}</span>`;
+            return `
+              <div class="wl-card p-3 rounded-xl subtle-box hover:border-blue-500 cursor-pointer transition ${activeRing}" data-ticker="${esc(item.yf_ticker)}">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-bold text-xs text-main truncate">${esc(item.name)}</span>
+                  ${rightBadge}
+                </div>
+                <div class="text-[10.5px] text-dim mt-0.5">${esc(item.asset_type)} · ${esc(item.sector)}</div>
+                <div class="text-xs text-sub mt-1.5 line-clamp-2">${esc(mc ? mc.comment : "클릭하여 실시간 차트 보기")}</div>
+              </div>
+            `;
+          }).join("");
+          gridEl.querySelectorAll(".wl-card").forEach((c) => c.addEventListener("click", () => {
+            state.selectedWatchlistTicker = c.getAttribute("data-ticker");
+            renderWatchlistSection(comments);
+          }));
+        }
+      }
+
+      function renderWatchlistChart(item) {
+        const container = document.getElementById("watchlist-chart-container");
+        if (!container || !item) return;
+        container.innerHTML = "";
+        const wrap = document.createElement("div");
+        wrap.className = "tradingview-widget-container";
+        wrap.style.cssText = "width:100%;height:100%;";
+        const w = document.createElement("div");
+        w.className = "tradingview-widget-container__widget";
+        wrap.appendChild(w);
+        const s = document.createElement("script");
+        s.type = "text/javascript";
+        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js";
+        s.async = true;
+        s.textContent = JSON.stringify({
+          symbols: [[item.name, `${item.tv_symbol}|1M`]],
+          chartOnly: false, width: "100%", height: "100%", locale: "kr",
+          colorTheme: state.theme === "dark" ? "dark" : "light",
+          autosize: true, showVolume: true, showMA: false,
+          hideDateRanges: false, hideMarketStatus: false, hideSymbolLogo: false,
+          scalePosition: "right", scaleMode: "Normal",
+          fontFamily: "Pretendard, -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: "11", noTimeScale: false, valuesTracking: "1",
+          changeMode: "price-and-percent", chartType: "area", lineWidth: 2, lineType: 0,
+          dateRanges: ["1d|1", "1w|15", "1m|30", "3m|60", "12m|1D", "all|1W"]
+        });
+        wrap.appendChild(s);
+        container.appendChild(wrap);
+      }
+
+      // Section 6: Calendar
+      function renderCalendarSection(events) {
+        const listEl = document.getElementById("calendar-list");
+        if (!listEl) return;
+        if (!events.length) {
+          listEl.innerHTML = `<div class="text-center text-xs text-dim py-4">해당 일자에 등록된 경제·실적 일정이 없습니다. (매일 자동 브리핑 실행 시 자동 채워집니다.)</div>`;
+          return;
+        }
+        listEl.innerHTML = events.map((ev) => {
+          const imp = String(ev.importance || "LOW").toUpperCase();
+          const impCls = imp === "HIGH" ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                       : imp === "MEDIUM" ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                       : "bg-slate-700/40 text-slate-400 border-slate-700";
+          return `
+            <div class="flex items-center justify-between gap-3 p-3 rounded-xl subtle-box">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-200 text-[11px] font-mono-num font-bold">${esc(ev.date)}</span>
+                <span class="text-xs sm:text-sm font-semibold text-main">${esc(ev.title)}</span>
+              </div>
+              <span class="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full border ${impCls} shrink-0">${esc(imp)}</span>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // ---------------------------------------------------------
+      // 7. Monthly Comparison View (monthly_reports + Auto MoM)
+      // ---------------------------------------------------------
+      function getMacroNum(dateStr, indKey) {
+        const arr = state.allMacroByDate[dateStr] || [];
+        const f = arr.find((m) => normMacroKey(m) === indKey);
+        if (!f) return null;
+        const n = Number(f.price);
+        return Number.isNaN(n) || n === 0 ? null : n;
+      }
+
+      function renderMonthlyComparison(monthKey) {
+        const [y, m] = monthKey.split("-");
+        const ascDates = [...state.availableDates].sort((a, b) => a.localeCompare(b));
+        const curDates = ascDates.filter((d) => d.startsWith(monthKey));
+        const prevDates = ascDates.filter((d) => d < `${monthKey}-01`);
+        const baseDate = prevDates.length ? prevDates[prevDates.length - 1] : curDates[0];
+        const latestDate = curDates[curDates.length - 1];
+
+        const saved = state.monthlyReportsMap[monthKey];
+        const tbody = document.getElementById("m_macroTableBody");
+
+        if (saved && Array.isArray(saved.macro_rows) && saved.macro_rows.length > 0) {
+          document.getElementById("m_headerTitle").textContent = saved.title;
+          document.getElementById("m_headerSubtitle").textContent = saved.subtitle;
+          document.getElementById("m_periodBadge").textContent = saved.period_badge || "월간 비교";
+          document.getElementById("m_thPrevMacro").textContent = saved.prev_label || "직전월 마감";
+          document.getElementById("m_thCurMacro").textContent = saved.cur_label || "해당월 기준";
+
+          if (tbody) {
+            tbody.innerHTML = saved.macro_rows.map((r) => {
+              const isVix = String(r.name || "").includes("VIX");
+              const pctNum = parseFloat(String(r.mom_pct || "0").replace(/[^0-9.+-]/g, ""));
+              const cls = deltaCls(pctNum, isVix);
+              return `
+                <tr class="hover:bg-slate-800/30 transition">
+                  <td class="py-3 px-3">
+                    <div class="font-bold text-main">${esc(r.name)}</div>
+                    <div class="text-[10.5px] text-dim">${esc(r.category || "")}</div>
+                  </td>
+                  <td class="py-3 px-3 text-right font-mono-num text-sub">${esc(r.prev_val)}</td>
+                  <td class="py-3 px-3 text-center font-mono-num text-[11px]">
+                    <div class="text-up">H ${esc(r.high_val)}</div>
+                    <div class="text-down">L ${esc(r.low_val)}</div>
+                  </td>
+                  <td class="py-3 px-3 text-right font-mono-num font-bold text-main">${esc(r.cur_val)}</td>
+                  <td class="py-3 px-3 text-right font-mono-num">
+                    <div class="font-extrabold ${cls}">${esc(r.mom_pct)}</div>
+                    <div class="text-[10.5px] text-dim">${esc(r.mom_change)}</div>
+                  </td>
+                  <td class="py-3 px-3 text-sub leading-snug">${esc(r.trend_note || "-")}</td>
+                </tr>
+              `;
+            }).join("");
+          }
+        } else {
+          // Auto-calculate MoM directly from daily_briefings rows
+          const hasPrev = prevDates.length > 0;
+          document.getElementById("m_headerTitle").textContent = `${y}년 ${Number(m)}월 월간 매크로 트렌드 비교 리포트`;
+          document.getElementById("m_headerSubtitle").textContent = hasPrev
+            ? `직전월 마감 (${baseDate}) vs 해당월 누적 (${curDates[0]} ~ ${latestDate} · ${curDates.length}일)`
+            : `해당월 첫 기록 (${baseDate}) vs 최신 (${latestDate} · ${curDates.length}일)`;
+          document.getElementById("m_periodBadge").textContent = `${curDates.length}일 자동 집계`;
+          document.getElementById("m_thPrevMacro").textContent = hasPrev ? `직전월 마감 (${baseDate.slice(5)})` : `월초 (${baseDate ? baseDate.slice(5) : "-"})`;
+          document.getElementById("m_thCurMacro").textContent = `해당월 최신 (${latestDate ? latestDate.slice(5) : "-"})`;
+
+          if (tbody) {
+            const rowsHtml = MONTHLY_INDICATORS.map((ind) => {
+              const baseVal = baseDate ? getMacroNum(baseDate, ind.key) : null;
+              const curVal = latestDate ? getMacroNum(latestDate, ind.key) : null;
+              const series = curDates.map((d) => ({ date: d, val: getMacroNum(d, ind.key) })).filter((p) => p.val !== null);
+              if (curVal === null && !series.length) return "";
+
+              let hi = series[0], lo = series[0];
+              series.forEach((p) => { if (p.val > hi.val) hi = p; if (p.val < lo.val) lo = p; });
+
+              const fmt = (v) => v === null ? "-" : ind.unit === "$" ? `$${fmtNum(v)}` : ind.unit === "원" ? `${fmtNum(v)}원` : ind.unit === "%" ? `${fmtNum(v)}%` : fmtNum(v);
+              let momHtml = `<span class="text-dim">-</span>`;
+              let note = "일별 데이터 자동 집계";
+              if (baseVal !== null && curVal !== null) {
+                const diff = curVal - baseVal;
+                const pct = (diff / baseVal) * 100;
+                const cls = deltaCls(pct, ind.invert);
+                const sign = diff > 0 ? "+" : "";
+                momHtml = `<div class="font-extrabold ${cls}">${sign}${pct.toFixed(2)}%</div><div class="text-[10.5px] text-dim">${sign}${fmtNum(diff)}</div>`;
+                if (hi && lo && lo.val > 0) {
+                  const amp = (((hi.val - lo.val) / lo.val) * 100).toFixed(1);
+                  note = `월중 변동폭 ${amp}% (최고 ${hi.date.slice(5)} / 최저 ${lo.date.slice(5)})`;
+                }
+              }
+              return `
+                <tr class="hover:bg-slate-800/30 transition">
+                  <td class="py-3 px-3"><div class="font-bold text-main">${esc(ind.label)}</div><div class="text-[10.5px] text-dim">${esc(ind.cat)}</div></td>
+                  <td class="py-3 px-3 text-right font-mono-num text-sub">${esc(fmt(baseVal))}</td>
+                  <td class="py-3 px-3 text-center font-mono-num text-[11px]">
+                    ${hi && lo ? `<div class="text-up">H ${esc(fmt(hi.val))} (${hi.date.slice(5)})</div><div class="text-down">L ${esc(fmt(lo.val))} (${lo.date.slice(5)})</div>` : "-"}
+                  </td>
+                  <td class="py-3 px-3 text-right font-mono-num font-bold text-main">${esc(fmt(curVal))}</td>
+                  <td class="py-3 px-3 text-right font-mono-num">${momHtml}</td>
+                  <td class="py-3 px-3 text-sub">${esc(note)}</td>
+                </tr>
+              `;
+            }).join("");
+            tbody.innerHTML = rowsHtml || `<tr><td colspan="6" class="py-8 text-center text-dim">비교할 월간 매크로 데이터가 부족합니다.</td></tr>`;
+          }
+        }
+
+        renderMonthlyTrajectory(baseDate, curDates);
+      }
+
+      function renderMonthlyTrajectory(baseDate, curDates) {
+        const indKey = state.monthlyChartIndicator;
+        const indMeta = MONTHLY_INDICATORS.find((x) => x.key === indKey) || MONTHLY_INDICATORS[0];
+        const metaEl = document.getElementById("m_trajMeta");
+        const box = document.getElementById("m_trajectoryChartContainer");
+        if (!box) return;
+
+        document.querySelectorAll("#m-chart-indicator-tabs .seg-btn").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-ind") === indKey);
+        });
+
+        const dates = baseDate && !curDates.includes(baseDate) ? [baseDate, ...curDates] : [...curDates];
+        const pts = dates.map((d) => ({ date: d, val: getMacroNum(d, indKey) })).filter((p) => p.val !== null);
+
+        if (!pts.length) {
+          if (metaEl) metaEl.textContent = `${indMeta.label} 일별 데이터 없음`;
+          box.innerHTML = `<div class="text-center text-xs text-dim py-8">해당 월에 표시할 일별 지표 데이터가 없습니다.</div>`;
+          return;
+        }
+
+        const vals = pts.map((p) => p.val);
+        const minV = Math.min(...vals);
+        const maxV = Math.max(...vals);
+        const span = maxV - minV || 1;
+
+        if (metaEl) {
+          metaEl.textContent = `${indMeta.label} · 기간 최저 ${fmtNum(minV)} ~ 최고 ${fmtNum(maxV)} (총 ${pts.length}개 시점)`;
+        }
+
+        box.innerHTML = `
+          <div class="flex items-end gap-2 pt-5 pb-1 min-w-[520px]">
+            ${pts.map((p, idx) => {
+              const ratio = (p.val - minV) / span;
+              const h = Math.round(28 + ratio * 112);
+              const isBase = idx === 0 && baseDate !== curDates[0];
+              const isLast = idx === pts.length - 1;
+              const barCls = isBase ? "bg-slate-500/70 border-slate-400" : isLast ? "bg-blue-500 border-blue-300 shadow-lg shadow-blue-500/30" : "bg-blue-500/50 border-blue-400/60";
+              return `
+                <div class="flex-1 min-w-[38px] flex flex-col items-center gap-1" title="${esc(p.date)}: ${fmtNum(p.val)}">
+                  <div class="text-[10px] font-mono-num ${isLast ? "text-blue-400 font-bold" : "text-dim"}">${fmtNum(p.val, p.val >= 1000 ? 0 : 2)}</div>
+                  <div class="w-full max-w-[30px] rounded-t-md border ${barCls}" style="height:${h}px;"></div>
+                  <div class="text-[10px] font-mono-num text-dim">${esc(p.date.slice(5))}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
+
+      // ---------------------------------------------------------
+      // 8. Event Binding
+      // ---------------------------------------------------------
+      function closeMobileSidebar() {
+        document.getElementById("archive-sidebar")?.classList.add("-translate-x-full");
+        document.getElementById("sidebar-backdrop")?.classList.add("hidden");
+      }
+
+      function bindEvents() {
+        document.querySelectorAll(".nav-tab").forEach((tab) => {
+          tab.addEventListener("click", () => {
+            const page = tab.getAttribute("data-page");
+            document.querySelectorAll(".nav-tab").forEach((t) => {
+              const active = t.getAttribute("data-page") === page;
+              t.className = active
+                ? "nav-tab px-3 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white flex items-center gap-1.5"
+                : "nav-tab px-3 py-1 rounded-md text-xs font-semibold text-dim hover:text-main flex items-center gap-1.5";
+            });
+            document.getElementById("page-briefing")?.classList.toggle("hidden", page !== "briefing");
+            document.getElementById("page-portfolio")?.classList.toggle("hidden", page !== "portfolio");
+          });
+        });
+
+        document.getElementById("back-to-briefing-btn")?.addEventListener("click", () => {
+          document.querySelector('.nav-tab[data-page="briefing"]')?.click();
+        });
+
+        document.getElementById("back-to-daily-btn")?.addEventListener("click", () => showDailyView());
+
+        document.querySelectorAll("#heatmap-mode-tabs .seg-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            state.heatmapMode = btn.getAttribute("data-mode") || "snapshot";
+            renderHeatmapSection(state.currentBriefing?.heatmap_data);
+          });
+        });
+
+        document.querySelectorAll("#m-chart-indicator-tabs .seg-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            state.monthlyChartIndicator = btn.getAttribute("data-ind") || "sp500";
+            if (state.currentMonthKey) renderMonthlyComparison(state.currentMonthKey);
+          });
+        });
+
+        document.getElementById("theme-toggle-btn")?.addEventListener("click", () => {
+          state.theme = state.theme === "dark" ? "light" : "dark";
+          localStorage.setItem("mb_theme", state.theme);
+          applyPreferences();
+          if (state.heatmapMode === "live") renderTradingViewHeatmap();
+          const list = state.watchlist.length ? state.watchlist : DEFAULT_WATCHLIST;
+          const sel = list.find((w) => w.yf_ticker === state.selectedWatchlistTicker) || list[0];
+          renderWatchlistChart(sel);
+        });
+
+        document.getElementById("color-scheme-btn")?.addEventListener("click", () => {
+          state.marketColor = state.marketColor === "kr" ? "us" : "kr";
+          localStorage.setItem("mb_market_color", state.marketColor);
+          applyPreferences();
+        });
+
+        document.getElementById("refresh-btn")?.addEventListener("click", () => bootstrapData());
+
+        document.getElementById("archive-search-input")?.addEventListener("input", (e) => {
+          renderArchiveSidebar(state.availableDates, e.target.value);
+        });
+
+        document.getElementById("mobile-menu-btn")?.addEventListener("click", () => {
+          document.getElementById("archive-sidebar")?.classList.toggle("-translate-x-full");
+          document.getElementById("sidebar-backdrop")?.classList.toggle("hidden");
+        });
+
+        document.getElementById("sidebar-backdrop")?.addEventListener("click", closeMobileSidebar);
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        applyPreferences();
+        bindEvents();
+        bootstrapData();
+      });
+    })();
+  </script>
 </body>
 </html>
