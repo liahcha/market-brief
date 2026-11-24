@@ -92,16 +92,16 @@ def main():
     - 관심종목 현황: {watchlist_snap}
     - 요구사항: 핵심 3줄 요약, 섹터 강세/약세 흐름, 주요 특징주 5~8개, 관심종목별 한 줄 코멘트, 이번 주 주요 경제·실적 일정을 간결하게 정리할 것.
     """
-
-    response = gemini.models.generate_content(
-        model="gemini-2.5-flash",
+   response = gemini.models.generate_content(
+        model="gemini-4-neon",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=BriefingAIOutput,
-            temperature=0.2,
+            thinking_config=types.ThinkingConfig(thinking_level="medium"),
         ),
     )
+
     ai_data = BriefingAIOutput.model_validate_json(response.text).model_dump()
 
     payload = {
